@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     data_dir: Path = Path("data")
     """Root for per-request uploads/outputs (``data_dir/requests/<id>``)."""
 
+    ui_dir: Path = Path("ui/dist")
+    """Built UI served at ``/`` when the directory exists (``just ui-build``)."""
+
     max_upload_mb: int = Field(default=512, gt=0)
     min_overlap_iou: float = Field(default=0.5, ge=0.0, le=1.0)
     """Minimum footprint IoU for an image pair to be accepted."""

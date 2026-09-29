@@ -78,8 +78,30 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
 - **`analyze()`** never raises for user errors. Status is `ok` / `partial` / `rejected` / `error`. It writes quicklooks, RGBA mask layers, overlays, GeoTIFF masks, WGS84 GeoJSON and `trace.json`.
 - 181 tests pass: 30 classifier queries, planner recipes and errors, executor isolation, end-to-end answers and trace-shape stability.
 
+### M5: API & minimal UI (2026-09-29)
+- **FastAPI** (`satquery.api.app:create_app`):
+  - `POST /analyze`: multipart; 1–2 `files`, `query`, per-file `modality_N` / `date_N` / `band_map_N` (JSON, 1-based), `benchmark`.
+    - Returns `{request_id, status, answer, confidence, error, artifacts[{kind,label,url,layer}], trace_url, trace}`.
+    - HTTP 200 for ok/partial, 422 for rejected (the trace is still included), 413 for oversized uploads, 500 for internal errors.
+  - `GET /tools` (registry export) and `GET /health` (includes VLM availability).
+  - `GET /requests/{id}/files/{name}`.
+- **Storage:** `data_dir/requests/<uuid>/{inputs,outputs}`, with sanitised filenames, uuid-only ids, a path-traversal-safe file route and a streaming upload cap (`max_upload_mb`).
+- **UI** (`ui/`, Vite 8 + React 19 + TypeScript):
+  - Upload form: 1–2 files, question, example chips, per-file overrides, benchmark toggle.
+  - Answer card: confidence meter + basis, MOCK badge, structured errors with hints, warnings.
+  - Evidence viewer: quicklook with toggleable mask layers and an opacity slider, side by side for pairs; GeoTIFF/GeoJSON downloads.
+  - Trace viewer: steps table, planner rationale, full JSON with download.
+- **just recipes:**
+  - `just serve` builds the UI, and FastAPI serves it at `/` in a single process (works on Windows).
+  - `just dev-api` + `just dev-ui` give hot reload (Vite proxies to the API).
+  - `just demo-data` writes demo GeoTIFFs to `data/demo`. `just lint` also type-checks the UI.
+- **Tests:** e2e API tests for SINGLE_OPT, SINGLE_SAR, PAIR_OPT_SAR and PAIR_TEMPORAL (answers checked against the truth, every artifact URL fetched). Also covered: 422 cases (change with one image, PNG without the flag, three files, bad overrides), band-map override, 413 upload limit, and path traversal.
+  - 195 tests pass.
+- **Manual check:** `just serve` served the built UI, and a real `curl` multipart `/analyze` on the demo temporal pair returned the built-up answer and working artifact URLs.
+  - Not browser-tested yet: the Chrome extension wasn't connected in this session.
+
 ## Next
-- M5: FastAPI `/analyze`, `/tools`, `/health`, request storage; Vite + React + TS UI; e2e API tests for the four configurations.
+- M6: eval harness (`satquery/eval/`): dataset protocol + loaders, metrics, `satquery-eval` CLI; confirm RSVQA-LR download URLs before writing download code; README with architecture + "add a tool".
 
 ## Open questions / decisions log
 - Starlette warns that `httpx` for its TestClient is deprecated (suggests `httpx2`). Harmless for now; revisit once the replacement is verified.

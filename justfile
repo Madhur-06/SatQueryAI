@@ -8,10 +8,11 @@ port := "8000"
 default:
     @just --list
 
-# Create .venv with core + dev deps and install git hooks
+# Create .venv with core + dev deps, install git hooks and UI packages
 install:
     uv sync
     uv run pre-commit install
+    npm --prefix ui install --no-fund --no-audit
 
 # Also install the optional extras (ml pulls torch: large download)
 install-eval:
@@ -20,10 +21,11 @@ install-eval:
 install-ml:
     uv sync --extra ml
 
-# Lint + format check
+# Lint + format check (Python) and type-check (UI)
 lint:
     uv run ruff check .
     uv run ruff format --check .
+    npm --prefix ui run typecheck
 
 # Auto-fix lint and format
 fmt:
@@ -34,6 +36,21 @@ fmt:
 test *ARGS:
     uv run pytest {{ARGS}}
 
-# Start the API (serves the built UI at / once `ui/dist` exists)
-serve:
+# Build the UI into ui/dist
+ui-build:
+    npm --prefix ui run build
+
+# Build the UI and start API + UI on http://127.0.0.1:{{port}}
+serve: ui-build
     uv run uvicorn satquery.api.app:app --host 127.0.0.1 --port {{port}}
+
+# Development: run these two in separate terminals (UI with hot reload on :5173)
+dev-api:
+    uv run uvicorn satquery.api.app:app --host 127.0.0.1 --port {{port}} --reload
+
+dev-ui:
+    npm --prefix ui run dev
+
+# Write synthetic demo GeoTIFFs to data/demo
+demo-data:
+    uv run python -m satquery.testing.demo data/demo

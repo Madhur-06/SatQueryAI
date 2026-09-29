@@ -20,6 +20,7 @@ datasets/
 # UI
 ui/node_modules/
 ui/dist/
+*.tsbuildinfo
 
 # OS / editors
 .DS_Store
