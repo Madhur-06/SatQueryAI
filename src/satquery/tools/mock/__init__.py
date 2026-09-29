@@ -74,7 +74,8 @@ class MockCaption(Tool):
     is_mock = True
 
     def run(self, inp: ToolInput, params: MockParams) -> ToolOutput:
-        caption = f"A {_scene(inp)}."
+        scene = _scene(inp)
+        caption = f"{'An' if scene[0] in 'aeiou' else 'A'} {scene}."
         return ToolOutput(
             text=f"{MOCK_PREFIX} {caption} (A captioning model will describe the content.)",
             values={"answer": caption, "mock": True},

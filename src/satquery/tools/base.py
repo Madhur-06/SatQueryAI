@@ -100,6 +100,8 @@ class ToolInput(BaseModel):
     layers: list[str]
     upstream: dict[str, ToolOutput] = Field(default_factory=dict)
     query: str | None = None
+    capability: Capability | None = None
+    """The capability the plan step asked for (lets multi-purpose tools pick a mode)."""
 
     def layer(self, i: int = 0) -> RasterLayer:
         return self.bundle.layer(self.layers[i])

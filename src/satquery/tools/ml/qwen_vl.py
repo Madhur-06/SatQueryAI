@@ -32,7 +32,8 @@ PROMPTS = {
 
 
 class QwenVLParams(ToolParams):
-    mode: Literal["vqa", "caption", "change_vqa"] = "vqa"
+    mode: Literal["auto", "vqa", "caption", "change_vqa"] = "auto"
+    """``auto`` follows the capability the plan step asked for."""
     rendering: Literal["true_colour", "false_colour"] = "true_colour"
     max_new_tokens: int = Field(default=128, ge=1, le=1024)
 
@@ -94,10 +95,16 @@ class QwenVLZeroShot(Tool):
         return Image.fromarray(rgb)
 
     def run(self, inp: ToolInput, params: QwenVLParams) -> ToolOutput:
+        mode = params.mode
+        if mode == "auto":
+            mode = {
+                Capability.CAPTION: "caption",
+                Capability.CHANGE_ANSWER: "change_vqa",
+            }.get(inp.capability, "vqa")  # type: ignore[arg-type]
         model, processor = self._load()
-        n_images = 2 if params.mode == "change_vqa" and len(inp.layers) > 1 else 1
+        n_images = 2 if mode == "change_vqa" and len(inp.layers) > 1 else 1
         images = [self._image(inp.layer(i), params.rendering) for i in range(n_images)]
-        prompt = PROMPTS[params.mode].format(question=inp.query or "")
+        prompt = PROMPTS[mode].format(question=inp.query or "")
         content = [{"type": "image", "image": img} for img in images]
         content.append({"type": "text", "text": prompt})
         inputs = processor.apply_chat_template(

@@ -10,14 +10,16 @@ from PIL import Image
 from satquery.io.preprocess import optical, sar
 from satquery.types import BandRole, Modality
 
-# RGB colours per mask label (anything else falls back to DEFAULT_COLOUR).
+# RGB colours per mask label, first match wins (specific keys before class names).
 MASK_COLOURS: dict[str, tuple[int, int, int]] = {
-    "water": (30, 144, 255),
-    "builtup": (230, 57, 70),
-    "vegetation": (46, 204, 113),
-    "change": (255, 190, 11),
+    "optical_only": (255, 159, 28),
+    "sar_only": (155, 93, 229),
     "gain": (230, 57, 70),
-    "loss": (58, 134, 255),
+    "loss": (255, 140, 0),
+    "change": (255, 214, 10),
+    "water": (30, 144, 255),
+    "built": (230, 57, 70),
+    "vegetation": (46, 204, 113),
 }
 DEFAULT_COLOUR = (255, 0, 255)
 

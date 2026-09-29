@@ -61,8 +61,25 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
 
 **Finding:** histogram matching (spec'd for temporal pairs) created about 1,200 false-change pixels over unchanged water. New built-up covering just 7% of the scene shifts the rank mapping for every other class. CVA now defaults to a robust (MAD-trimmed) linear gain/offset normalisation. Histogram matching stays available as `normalisation="histogram"`, and a test documents the failure mode.
 
+### M4: Agentic controller & trace, `satquery/agent/` (2026-09-29)
+- **Classifier.** `TaskClassifier` protocol + `RuleBasedClassifier` (keyword tables) → `TaskSpec` (task, targets, answer type, change direction, confidence, rationale).
+  - Uses the validated input config as context: e.g. a temporal pair implies change, opt+SAR with a target implies fusion.
+  - `TaskSpec` is a plain pydantic model, so its JSON schema can serve as an LLM function-calling schema later.
+- **Planner.** Recipes (`mapping`, `fusion` / `single_source`, `class_change`, `generic_change`, `vlm`) are capability chains. `PlanBuilder` asks the registry for the best tool per capability, given the actual layers.
+  - A higher-priority tool registered later is used automatically (tested).
+  - If nothing fits, it explains why: `BAND_ROLE_MISSING` (e.g. built-up without SWIR), `MODALITY_MISMATCH`, `TOOL_UNAVAILABLE`, `NO_TOOL`.
+  - Fallbacks, with warnings: fusion → single source; class change on SAR → generic log-ratio change.
+- **Executor.** Runs steps in order and records effective params (defaults filled in). A crashing or invalid step fails alone; dependents are skipped.
+- **Composer.** Grounded answers with hectares, share, regions and dates. Yes/no follows the asked direction.
+  - Confidence heuristic is documented in `composer.py`: mask-step confidence, × cross-check IoU for class change (× 0.8 without it), fusion agreement, 0 for mocks, classical capped at 0.95.
+  - Evidence lists masks per layer.
+- **Trace.** `ExecutionTrace` schema v1.0: inputs (sha256, modality provenance, band sources, alignment, grid), task, plan with rationale, steps (effective params, runtime, output summary, confidence, mock flag, errors), answer, artifacts, warnings/errors, registry digest.
+  - A trace is emitted for rejected requests too.
+- **`analyze()`** never raises for user errors. Status is `ok` / `partial` / `rejected` / `error`. It writes quicklooks, RGBA mask layers, overlays, GeoTIFF masks, WGS84 GeoJSON and `trace.json`.
+- 181 tests pass: 30 classifier queries, planner recipes and errors, executor isolation, end-to-end answers and trace-shape stability.
+
 ## Next
-- M4: `satquery/agent/`: rule-based TaskClassifier, recipe-driven Planner, Executor, AnswerComposer, ExecutionTrace, `analyze()`.
+- M5: FastAPI `/analyze`, `/tools`, `/health`, request storage; Vite + React + TS UI; e2e API tests for the four configurations.
 
 ## Open questions / decisions log
 - Starlette warns that `httpx` for its TestClient is deprecated (suggests `httpx2`). Harmless for now; revisit once the replacement is verified.

@@ -28,6 +28,7 @@ class ErrorCode(StrEnum):
     TOOL_UNAVAILABLE = "tool_unavailable"
     INVALID_PARAMS = "invalid_params"
     TOOL_FAILED = "tool_failed"
+    INTERNAL_ERROR = "internal_error"
 
 
 class ErrorInfo(BaseModel):
