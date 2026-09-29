@@ -11,7 +11,7 @@ against these rows on the **same subset and seed**.
 | `vlm_vqa` (mock prior) | all | 39.9 | 30.9 | 75.0 | 32.6 | 15.7 | 0.0 | "yes" / "0" prior; floor |
 | `vlm_vqa` (mock prior) | 500 (0) | 42.8 | 32.0 | 79.5 | 30.1 | 18.6 | 0.0 | same subset as below |
 | `pipeline` (Qwen off) | 500 (0) | 42.8 | 32.0 | 79.5 | 30.1 | 18.6 | 0.0 | RGB-only: classical tools cannot run, falls back to the mock VLM; 8 area questions rejected |
-| `qwen_vl_zeroshot` | 500 (0) | _running_ | | | | | | Qwen/Qwen3-VL-2B-Instruct, CPU, short-answer prompt |
+| `qwen_vl_zeroshot` | 500 (0) | 47.8 | 33.8 | 63.9 | 71.5 | 0.0 | 0.0 | Qwen/Qwen3-VL-2B-Instruct, CPU (~6.4 s/question). Only ever answers yes/no: count 0 because it never outputs a number; rural/urban 0 because the prompt allows only yes/no or a number (prompt artifact, not re-tuned on test) |
 
 OA = overall accuracy, AA = mean of per-type accuracies (as in the RSVQA papers).
 

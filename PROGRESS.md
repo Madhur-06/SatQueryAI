@@ -138,6 +138,7 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
 - **Baselines** are in `results/README.md`.
   - RSVQA-LR full test, mock: OA 39.9 / AA 30.9. On the 500-question subset (seed 0), mock and pipeline both score 42.8 / 32.0.
   - CDVQA 1,000-question subset: mock and pipeline both score 29.2 / 14.4. Explanation in the open questions below.
+  - Qwen3-VL-2B zero-shot on RSVQA-LR (500, seed 0): OA 47.8 / AA 33.8, vs 42.8 / 32.0 for the mock prior. Comparison 71.5 (mock 30.1); presence 63.9 (mock 79.5); count and rural/urban 0 (see open questions). 54 min on CPU.
 
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
@@ -147,7 +148,8 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
 - [x] README with setup, mermaid architecture and how to add a tool.
 
 ## Next
-- Record Qwen3-VL zero-shot on RSVQA-LR (500, seed 0; running) and CDVQA.
+- Qwen3-VL zero-shot on CDVQA (two-image prompt), on the same 1,000-question subset as the mock and pipeline runs; about 2 h on CPU.
+- A per-question-type answer format for the VLM prompt (yes/no, number, or a word such as rural/urban). Tune on the RSVQA **val** split, never on test.
 - VRSBench download command (HF `xiang709/VRSBench`) for caption / grounding baselines.
 - Phase 2 candidates:
   - an LLM function-calling classifier behind `TaskClassifier`;
@@ -164,7 +166,10 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
   - CDVQA's categorical answers (`NVG_surface`, `0_to_10`) are not produced.
   - Needs a learned change model and a benchmark answer adapter (Phase 2).
   - A bimodality/no-change test for CVA is a cheap improvement to consider.
-- **RSVQA "What is the amount of X?"** questions get "yes" from Qwen3-VL-2B even with the number-or-yes/no prompt. This is a zero-shot limitation, left as is.
+- **Qwen3-VL-2B zero-shot answers only yes/no on RSVQA-LR.**
+  - It answers "yes"/"no" even to "What is the amount of X?", so count accuracy is 0.
+  - Rural/urban is also 0: the prompt restricts replies to yes/no or a number, which excludes "rural"/"urban". That's a prompt artifact.
+  - Left as is so the baseline isn't tuned on test; fix it via the val split.
 - The Qwen tool runs at ~6 s per question on CPU. Full-split zero-shot runs are hours; use subsets or a GPU.
 - BigEarthNet.txt: per-band file naming inside BigEarthNet v2 patch folders is assumed (`<patch>_B02.tif` ...); verify on a real copy. Grounding rows are skipped until their box format is verified.
 - UI not browser-tested in-session (Chrome extension not connected). API verified with real requests.
