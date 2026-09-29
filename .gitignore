@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime data (uploads, outputs, downloaded benchmarks, weights)
+data/
+datasets/
+*.safetensors
+*.ckpt
+
+# UI
+ui/node_modules/
+ui/dist/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
