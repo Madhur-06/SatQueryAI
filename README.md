@@ -34,7 +34,10 @@ open http://localhost:5173.
 
 Optional extras:
 - `just install-eval` adds the benchmark metrics (pycocoevalcap; METEOR needs Java).
-- `just install-ml` adds torch and transformers. It is a large download.
+- `just install-ml` adds torch (CPU build) and transformers. It is a large download.
+- `just install-gpu` does the same with the NVIDIA CUDA 12.6 build of torch (needs driver ≥ 560).
+  The `cpu` and `cuda` extras are mutually exclusive; the VLM tool uses the GPU automatically
+  when one is visible.
 
 Settings are environment variables prefixed `SATQUERY_` (see `src/satquery/config.py`):
 

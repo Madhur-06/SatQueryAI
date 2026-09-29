@@ -1,0 +1,56 @@
+{
+  "benchmark": "cdvqa",
+  "split": "test",
+  "tool": "qwen_vl_zeroshot",
+  "tool_version": "0.1.0",
+  "is_mock": false,
+  "mode": "tool",
+  "subset": 1000,
+  "seed": 0,
+  "n_samples": 1000,
+  "n_errors": 0,
+  "metrics": {
+    "n": 1000,
+    "overall_accuracy": 0.425,
+    "average_accuracy": 0.24126363787910143,
+    "per_type": {
+      "change_or_not": {
+        "accuracy": 0.7343358395989975,
+        "n": 399
+      },
+      "change_ratio": {
+        "accuracy": 0.0,
+        "n": 49
+      },
+      "change_ratio_types": {
+        "accuracy": 0.0,
+        "n": 132
+      },
+      "change_to_what": {
+        "accuracy": 0.0,
+        "n": 65
+      },
+      "decrease_or_not": {
+        "accuracy": 0.5535714285714286,
+        "n": 112
+      },
+      "increase_or_not": {
+        "accuracy": 0.6422018348623854,
+        "n": 109
+      },
+      "largest_change": {
+        "accuracy": 0.0,
+        "n": 64
+      },
+      "smallest_change": {
+        "accuracy": 0.0,
+        "n": 70
+      }
+    }
+  },
+  "created_at": "2026-09-29T16:40:39.489460Z",
+  "satquery_version": "0.1.0",
+  "registry_digest": "81dda6fb648916d8",
+  "git_commit": "d6ece56",
+  "runtime_s": 469.306
+}

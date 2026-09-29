@@ -18,9 +18,13 @@ install:
 install-eval:
     uv sync --extra eval
 
-# torch + transformers: large download
+# torch (CPU build) + transformers: large download
 install-ml:
-    uv sync --extra eval --extra ml
+    uv sync --extra eval --extra ml --extra cpu
+
+# torch (NVIDIA CUDA 12.6 build, driver >= 560) + transformers: larger download
+install-gpu:
+    uv sync --extra eval --extra ml --extra cuda
 
 # Download a benchmark (verified): just download rsvqa-lr | cdvqa
 download NAME:

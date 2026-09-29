@@ -139,6 +139,11 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
   - RSVQA-LR full test, mock: OA 39.9 / AA 30.9. On the 500-question subset (seed 0), mock and pipeline both score 42.8 / 32.0.
   - CDVQA 1,000-question subset: mock and pipeline both score 29.2 / 14.4. Explanation in the open questions below.
   - Qwen3-VL-2B zero-shot on RSVQA-LR (500, seed 0): OA 47.8 / AA 33.8, vs 42.8 / 32.0 for the mock prior. Comparison 71.5 (mock 30.1); presence 63.9 (mock 79.5); count and rural/urban 0 (see open questions). 54 min on CPU.
+  - Qwen3-VL-2B zero-shot on CDVQA (1,000, seed 0, GPU): OA 42.5 / AA 24.1, vs 29.2 / 14.4. On yes/no change questions 67.9% (always-"yes" 47.1%). Categorical and ratio types 0 (prompt allows only yes/no or a number). 7.8 min on an RTX 4060 Laptop GPU.
+- **GPU support.** Torch now comes from two mutually exclusive extras, `cpu` (PyTorch CPU index; PyPI on macOS) and `cuda` (PyTorch CUDA 12.6 index, driver ≥ 560), both locked in `uv.lock`.
+  - `just install-ml` installs CPU; `just install-gpu` installs CUDA.
+  - Before this, PyPI's torch was CPU-only on Windows but bundled CUDA 13 on Linux, so "CPU install" meant different things per OS.
+  - Qwen loads on `cuda:0` in bf16 (4.26 GB VRAM). It runs at 0.46 s per two-image question, vs ~6.4 s per single-image question on CPU.
 
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
@@ -148,8 +153,8 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
 - [x] README with setup, mermaid architecture and how to add a tool.
 
 ## Next
-- Qwen3-VL zero-shot on CDVQA (two-image prompt), on the same 1,000-question subset as the mock and pipeline runs; about 2 h on CPU.
-- A per-question-type answer format for the VLM prompt (yes/no, number, or a word such as rural/urban). Tune on the RSVQA **val** split, never on test.
+- Re-run the RSVQA-LR zero-shot baseline on the GPU, on a larger subset or the full split (~80 min at GPU speed, estimated).
+- A per-question-type answer format for the VLM prompt (yes/no, number, or a word such as rural/urban or a CDVQA class name). Tune on the **val** splits, never on test.
 - VRSBench download command (HF `xiang709/VRSBench`) for caption / grounding baselines.
 - Phase 2 candidates:
   - an LLM function-calling classifier behind `TaskClassifier`;
@@ -170,7 +175,8 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
   - It answers "yes"/"no" even to "What is the amount of X?", so count accuracy is 0.
   - Rural/urban is also 0: the prompt restricts replies to yes/no or a number, which excludes "rural"/"urban". That's a prompt artifact.
   - Left as is so the baseline isn't tuned on test; fix it via the val split.
-- The Qwen tool runs at ~6 s per question on CPU. Full-split zero-shot runs are hours; use subsets or a GPU.
+- The Qwen tool runs at ~6 s per question on CPU and ~0.5 s on the RTX 4060 (`just install-gpu`).
+- After `just install-gpu`, use `uv run --no-sync ...` (or pass the same extras). A plain `uv sync` / `just install-ml` switches torch back to the CPU build.
 - BigEarthNet.txt: per-band file naming inside BigEarthNet v2 patch folders is assumed (`<patch>_B02.tif` ...); verify on a real copy. Grounding rows are skipped until their box format is verified.
 - UI not browser-tested in-session (Chrome extension not connected). API verified with real requests.
 - Starlette warns that `httpx` for its TestClient is deprecated (suggests `httpx2`). Harmless for now; revisit once the replacement is verified.

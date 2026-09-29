@@ -21,6 +21,7 @@ OA = overall accuracy, AA = mean of per-type accuracies (as in the RSVQA papers)
 |---|---|---|---|---|
 | `change_vqa` (mock prior) | 1000 (0) | 29.2 | 14.4 | "yes" prior |
 | `pipeline` (Qwen off) | 1000 (0) | 29.2 | 14.4 | Otsu-thresholded CVA always finds *some* change, so every yes/no question gets "yes"; categorical answers (`NVG_surface`, `0_to_10`) are not produced |
+| `qwen_vl_zeroshot` | 1000 (0) | 42.5 | 24.1 | Qwen/Qwen3-VL-2B-Instruct, both dates as two images, RTX 4060 Laptop GPU (bf16, 0.46 s/question, 7.8 min). Per type: change_or_not 73.4, increase_or_not 64.2, decrease_or_not 55.4; yes/no questions overall 67.9 (always-"yes": 47.1). Categorical and ratio types 0: the prompt allows only yes/no or a number (same artifact as RSVQA rural/urban) |
 
 These classical and mock numbers are floors. The CDVQA result shows that class-specific
 change on RGB and CDVQA's answer vocabulary need a learned model or answer adapter

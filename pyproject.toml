@@ -19,17 +19,25 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# `ml` needs exactly one torch build: add `cpu` or `cuda` (see `just install-ml` / `install-gpu`).
 ml = [
-    "torch>=2.4",
-    "torchvision>=0.19",  # Qwen3-VL's processor imports its video processor
     "transformers>=4.57",
     "accelerate>=1.0",
+]
+cpu = [
+    "torch>=2.4",
+    "torchvision>=0.19",  # Qwen3-VL's processor imports its video processor
 ]
 eval = [
     "pycocoevalcap>=1.2",
     "huggingface_hub>=0.25",
     "pyarrow>=17",
     "pandas>=2.2",
+]
+# NVIDIA GPU build of torch (CUDA 12.6 wheels, driver >= 560).
+cuda = [
+    "torch>=2.4",
+    "torchvision>=0.19",
 ]
 
 [project.scripts]
@@ -79,4 +87,29 @@ filterwarnings = [
     "ignore:Use `@` matmul:PendingDeprecationWarning:rasterio",
     # Fixtures intentionally open ungeoreferenced PNG / no-CRS files.
     "ignore::rasterio.errors.NotGeoreferencedWarning",
+]
+
+# torch / torchvision: `cpu` extra -> PyTorch's CPU index (PyPI on macOS, which is CPU-only;
+# PyPI's Linux wheels bundle CUDA), `cuda` extra -> PyTorch's CUDA 12.6 index.
+[tool.uv]
+conflicts = [[{ extra = "cpu" }, { extra = "cuda" }]]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform != 'darwin'" },
+    { index = "pytorch-cu126", extra = "cuda" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform != 'darwin'" },
+    { index = "pytorch-cu126", extra = "cuda" },
 ]
