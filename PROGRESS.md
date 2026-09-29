@@ -100,13 +100,52 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
 - **Manual check:** `just serve` served the built UI, and a real `curl` multipart `/analyze` on the demo temporal pair returned the built-up answer and working artifact URLs.
   - Not browser-tested yet: the Chrome extension wasn't connected in this session.
 
+### M6: Evaluation harness, `satquery/eval/` + README (2026-09-29)
+- **Sources** (`eval/sources.py`), each checked against its primary source:
+  - RSVQA-LR: Zenodo record 6344334 (concept DOI 10.5281/zenodo.6344333, CC-BY-4.0, 150.5 MB).
+  - VRSBench: HF `xiang709/VRSBench` (CC-BY-4.0).
+  - CDVQA: github.com/YZHJessica/CDVQA (annotations only).
+  - BigEarthNet.txt: HF `BIFOLD-BigEarthNetv2-0/BigEarthNet.txt` (CDLA-Permissive-1.0).
+- **Loaders**: `BenchmarkDataset` protocol with a deterministic `subset(n, seed)`. Missing files raise `DatasetNotFoundError` naming the source and the expected files.
+  - `rsvqa-lr` and `cdvqa` share one RSVQA-style schema, verified against the authors' `VQALoader.py` and the CDVQA JSONs.
+  - `vrsbench-{vqa,caption,grounding}`: JSON lists; boxes parsed from `{<x1><y1><x2><y2>}` on a 0–100 scale; images found by name anywhere under the root.
+  - `bigearthnet-txt`: parquet columns from the dataset's own datamodule; S2 bands stacked from a local BigEarthNet v2 copy.
+- **Metrics**:
+  - VQA: overall and average accuracy, per type, with answer normalisation.
+  - Captioning: BLEU-4 / METEOR / CIDEr via pycocoevalcap, simple tokeniser; METEOR uses Java, which is present.
+  - Grounding: Acc@IoU ≥ 0.5 and mean IoU.
+  - Change masks: precision / recall / F1 / IoU, micro and per-image.
+- **Runner + CLI**: `satquery-eval --benchmark B --tool T|pipeline --subset N [--seed --split --data-root --out]`.
+  - Evaluates one registry tool (checked by *capability*, not just task) or the full pipeline.
+  - Writes `results/<bench>_<tool>_<ts>.{json,md}` with tool version, mock flag, registry digest, git commit, subset and seed, and per-sample records.
+- **README**: setup, settings, mermaid architecture, API, "adding a tool" walkthrough, evaluation.
+- 217 tests pass (loaders and runner run on tiny synthetic copies of each benchmark's file layout). `just lint` (ruff + UI type-check) is clean.
+
+## Definition of done: status
+- [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
+- [x] All four input configurations work end-to-end on synthetic data with a clean trace (e2e API tests).
+- [x] Water / built-up / change queries return real classical results with hectares and overlays; VLM tasks return labelled mock outputs through the same pipeline.
+- [ ] Eval CLI on a real benchmark subset. The CLI works end-to-end on synthetic benchmark layouts, but no real data is downloaded yet (awaiting confirmation).
+- [x] README with setup, mermaid architecture and how to add a tool.
+
 ## Next
-- M6: eval harness (`satquery/eval/`): dataset protocol + loaders, metrics, `satquery-eval` CLI; confirm RSVQA-LR download URLs before writing download code; README with architecture + "add a tool".
+- Download RSVQA-LR (test split) once confirmed, then record the mock baseline (`vlm_vqa`) and a `pipeline` baseline in `results/`.
+- Qwen3-VL zero-shot baseline: needs `just install-ml` plus the weights (about 4–5 GB); awaiting go-ahead.
+- Phase 2 candidates:
+  - an LLM function-calling classifier behind `TaskClassifier`;
+  - learned water/built-up/change models registered at higher priority;
+  - a tiled executor for large rasters;
+  - refined Lee;
+  - multi-target queries.
 
 ## Open questions / decisions log
+- CDVQA images: the repo ships annotations only (images come from SECOND). Where should we get them? The loader assumes `im1/` + `im2/` folders (configurable) until confirmed.
+- BigEarthNet.txt: per-band file naming inside BigEarthNet v2 patch folders is assumed (`<patch>_B02.tif` ...); verify on a real copy. Grounding rows are skipped until their box format is verified.
+- The Qwen tool (`qwen_vl_zeroshot`) has not been run yet; its generate/decode path follows the model card and is unverified until weights are available.
+- UI not browser-tested in-session (Chrome extension not connected). API verified with real requests.
 - Starlette warns that `httpx` for its TestClient is deprecated (suggests `httpx2`). Harmless for now; revisit once the replacement is verified.
-- Whole rasters are read into memory in Phase 1. Tiling utilities exist, but tools use them only above `tile_size`.
-- Lee filter only. Refined Lee is a TODO (Phase 2).
-- Built-up needs SWIR (NDBI). 4-band inputs will get a structured `BAND_ROLE_MISSING` error (decided).
+- Whole rasters are read into memory. Tiling/stitching utilities exist and are tested, but tools don't use them yet (fine for typical scene sizes; needed for very large rasters).
+- Lee filter only. Refined Lee is a TODO.
+- Decided: built-up needs SWIR (NDBI), so 4-band inputs get a structured `band_role_missing` error.
+- Decided: CVA uses robust linear radiometric normalisation by default; histogram matching invents change (see M3).
 - Old pip `venv/` in the repo root is unused (uv uses `.venv/`); it's git-ignored and safe to delete.
-- M6: confirm RSVQA-LR download URLs and the CDVQA image hosting before writing download code.
