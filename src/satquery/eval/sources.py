@@ -46,8 +46,9 @@ SOURCES: dict[str, DatasetSource] = {
         files=["{Train,Val,Test,Test2}_{questions,answers,images}.json"],
         license="Apache-2.0 (annotations)",
         notes="Repository contains annotations only (RSVQA-style schema, images referenced "
-        "by file_name). The bi-temporal images come from the SECOND dataset; the repo does "
-        "not document where to obtain them. TODO: confirm image source with the team.",
+        "by file_name). Images: SECOND train set (2,968 pairs, im1/im2) from the SECOND "
+        "authors' page https://captain-whu.github.io/SCD/ (Google Drive, "
+        "SECOND_train_set.rar, 2.41 GB). The page states no licence or terms of use.",
     ),
     "bigearthnet-txt": DatasetSource(
         name="BigEarthNet.txt (BIFOLD)",

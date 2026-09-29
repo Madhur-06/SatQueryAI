@@ -26,6 +26,19 @@ from satquery.testing.synthetic import (
 from satquery.tools.registry import Registry, default_registry
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption("--run-ml", action="store_true", help="run tests that load model weights")
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    if config.getoption("--run-ml"):
+        return
+    skip = pytest.mark.skip(reason="loads model weights; run with --run-ml (just test-ml)")
+    for item in items:
+        if "ml" in item.keywords:
+            item.add_marker(skip)
+
+
 @pytest.fixture(scope="session")
 def synth_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return tmp_path_factory.mktemp("synthetic")

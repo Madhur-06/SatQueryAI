@@ -14,12 +14,17 @@ install:
     uv run pre-commit install
     npm --prefix ui install --no-fund --no-audit
 
-# Also install the optional extras (ml pulls torch: large download)
+# Optional extras (uv sync installs exactly the listed extras, so ml includes eval)
 install-eval:
     uv sync --extra eval
 
+# torch + transformers: large download
 install-ml:
-    uv sync --extra ml
+    uv sync --extra eval --extra ml
+
+# Download a benchmark (verified): just download rsvqa-lr | cdvqa
+download NAME:
+    uv run satquery-eval --download {{NAME}}
 
 # Lint + format check (Python) and type-check (UI)
 lint:
@@ -35,6 +40,10 @@ fmt:
 # Run the test suite (CPU-only)
 test *ARGS:
     uv run pytest {{ARGS}}
+
+# Smoke-test the real VLM tool (needs `just install-ml` and cached weights)
+test-ml:
+    uv run pytest -m ml --run-ml -v
 
 # Build the UI into ui/dist
 ui-build:

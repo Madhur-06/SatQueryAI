@@ -120,8 +120,10 @@ from pydantic import Field
 from satquery.tools.base import Tool, ToolInput, ToolOutput, ToolParams, ToolRequirements
 from satquery.types import BandRole, Capability, InputConfig, TaskType
 
-class MyWaterParams(ToolParams):            # extra="forbid": only these params can be set
+
+class MyWaterParams(ToolParams):  # extra="forbid": only these params can be set
     threshold: float = Field(default=0.1, ge=-1, le=1)
+
 
 class MyWaterModel(Tool):
     name = "my_water_model"
@@ -129,19 +131,21 @@ class MyWaterModel(Tool):
     description = "Water segmentation with <model>."
     tasks = frozenset({TaskType.VQA, TaskType.FUSION_EXTRACT})
     input_configs = frozenset({InputConfig.SINGLE_OPT, InputConfig.PAIR_OPT_SAR})
-    produces = frozenset({Capability.MASK_WATER})     # the planner chains by capability
-    requires = ToolRequirements(n_layers=1, modality="optical",
-                                bands=((BandRole.GREEN,), (BandRole.NIR,)))
+    produces = frozenset({Capability.MASK_WATER})  # the planner chains by capability
+    requires = ToolRequirements(
+        n_layers=1, modality="optical", bands=((BandRole.GREEN,), (BandRole.NIR,))
+    )
     Params = MyWaterParams
-    priority = 20                                     # beats ndwi_water_mask (10) when usable
+    priority = 20  # beats ndwi_water_mask (10) when usable
 
     def run(self, inp: ToolInput, params: MyWaterParams) -> ToolOutput:
-        layer = inp.layer()                           # RasterLayer on the reference grid
-        mask = ...                                    # (H, W) bool
+        layer = inp.layer()  # RasterLayer on the reference grid
+        mask = ...  # (H, W) bool
         return ToolOutput(
-            masks={"mask": layer.georaster(mask)},    # keeps transform + CRS
+            masks={"mask": layer.georaster(mask)},  # keeps transform + CRS
             values={"class": "water", "pixels": int(mask.sum())},
-            confidence=0.8, confidence_basis="mean softmax probability",
+            confidence=0.8,
+            confidence_basis="mean softmax probability",
         )
 ```
 

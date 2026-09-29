@@ -23,11 +23,14 @@ from satquery.tools.base import Tool, ToolInput, ToolOutput, ToolParams, ToolReq
 from satquery.types import Capability, InputConfig, TaskType
 
 PROMPTS = {
-    "vqa": "You are analysing a satellite image. Answer the question concisely. {question}",
+    "vqa": "You are analysing a satellite image.\nQuestion: {question}\n"
+    "Reply with one word only: yes or no for a yes/no question, or a number for a question "
+    "about an amount or count.",
     "caption": "Describe this satellite image in two or three sentences: land cover, "
     "notable structures, water bodies and patterns.",
     "change_vqa": "The first image was acquired before the second image; both show the same "
-    "area. Answer concisely. {question}",
+    "area.\nQuestion: {question}\nReply with one word only: yes or no for a yes/no "
+    "question, or a number for a question about an amount or count.",
 }
 
 

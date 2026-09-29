@@ -3,6 +3,7 @@
 Examples::
 
     satquery-eval --list
+    satquery-eval --download rsvqa-lr          # explicit, verified download
     satquery-eval --benchmark rsvqa-lr --tool vlm_vqa --subset 500
     satquery-eval --benchmark vrsbench-grounding --tool grounding --data-root D:/vrsbench
     satquery-eval --benchmark rsvqa-lr --tool pipeline --subset 100
@@ -15,6 +16,7 @@ import sys
 from pathlib import Path
 
 from satquery.eval.datasets import DATASETS, DEFAULT_ROOTS, DatasetNotFoundError, load_dataset
+from satquery.eval.download import DOWNLOADERS
 from satquery.eval.report import write_report
 from satquery.eval.runner import PIPELINE, run_eval
 from satquery.eval.sources import SOURCES
@@ -39,6 +41,9 @@ def _list() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="satquery-eval", description=__doc__.split("\n")[0])
     parser.add_argument("--list", action="store_true", help="list benchmarks, sources and tools")
+    parser.add_argument(
+        "--download", choices=sorted(DOWNLOADERS), help="download a benchmark to --data-root"
+    )
     parser.add_argument("--benchmark", choices=sorted(DATASETS))
     parser.add_argument("--tool", help=f"registry tool name, or '{PIPELINE}'")
     parser.add_argument("--subset", type=int, default=None, help="random subset size")
@@ -51,6 +56,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.list:
         _list()
+        return 0
+    if args.download:
+        root = args.data_root or Path(DEFAULT_ROOTS[args.download])
+        try:
+            DOWNLOADERS[args.download](root)
+        except OSError as exc:
+            print(f"download failed: {exc}", file=sys.stderr)
+            return 1
         return 0
     if not args.benchmark or not args.tool:
         parser.error("--benchmark and --tool are required (or use --list)")

@@ -13,6 +13,7 @@ from collections.abc import Callable
 
 from satquery.agent.classifier import TaskSpec
 from satquery.agent.plan import Plan, PlanBuilder
+from satquery.errors import ErrorCode, SatQueryError
 from satquery.io.validate import InputBundle, check_task_compatibility
 from satquery.tools.registry import Registry
 from satquery.types import TARGET_MASK, AnswerType, Capability, InputConfig, TargetClass, TaskType
@@ -152,9 +153,34 @@ class Planner:
         return recipe_vlm
 
     def plan(self, spec: TaskSpec, bundle: InputBundle) -> Plan:
-        """Raises ``SatQueryError`` (TASK_INPUT_MISMATCH, BAND_ROLE_MISSING, NO_TOOL...)."""
+        """Raises ``SatQueryError`` (TASK_INPUT_MISMATCH, BAND_ROLE_MISSING, NO_TOOL...).
+
+        If a question names a target that no classical tool can map on these inputs (e.g.
+        water on an RGB-only image: no NIR), yes/no, count and free-text questions fall
+        back to the vision-language tool, with a warning that says why. Area questions
+        are still rejected: only a mask can give hectares, and the error explains which
+        bands (or band_map override) are needed.
+        """
         check_task_compatibility(spec.task, bundle.config)
         builder = PlanBuilder(self.registry, bundle)
         recipe = self.select_recipe(spec, bundle)
-        name = recipe(builder, spec, bundle)
+        try:
+            name = recipe(builder, spec, bundle)
+        except SatQueryError as exc:
+            if not self._can_fall_back(spec, exc):
+                raise
+            builder = PlanBuilder(self.registry, bundle)
+            builder.warnings.append(
+                f"{exc.info.message} Answered by a vision-language tool instead."
+            )
+            builder.rationale.append(f"fallback to vision-language answer ({exc.code})")
+            name = recipe_vlm(builder, spec, bundle)
         return builder.build(name)
+
+    @staticmethod
+    def _can_fall_back(spec: TaskSpec, exc: SatQueryError) -> bool:
+        return (
+            exc.code in (ErrorCode.BAND_ROLE_MISSING, ErrorCode.MODALITY_MISMATCH)
+            and spec.task in (TaskType.VQA, TaskType.GROUNDING, TaskType.FUSION_EXTRACT)
+            and spec.answer_type is not AnswerType.AREA
+        )

@@ -1,0 +1,56 @@
+{
+  "benchmark": "cdvqa",
+  "split": "test",
+  "tool": "pipeline",
+  "tool_version": "0.1.0",
+  "is_mock": false,
+  "mode": "pipeline",
+  "subset": 1000,
+  "seed": 0,
+  "n_samples": 1000,
+  "n_errors": 0,
+  "metrics": {
+    "n": 1000,
+    "overall_accuracy": 0.292,
+    "average_accuracy": 0.14384010484927917,
+    "per_type": {
+      "change_or_not": {
+        "accuracy": 0.5714285714285714,
+        "n": 399
+      },
+      "change_ratio": {
+        "accuracy": 0.0,
+        "n": 49
+      },
+      "change_ratio_types": {
+        "accuracy": 0.0,
+        "n": 132
+      },
+      "change_to_what": {
+        "accuracy": 0.0,
+        "n": 65
+      },
+      "decrease_or_not": {
+        "accuracy": 0.2857142857142857,
+        "n": 112
+      },
+      "increase_or_not": {
+        "accuracy": 0.29357798165137616,
+        "n": 109
+      },
+      "largest_change": {
+        "accuracy": 0.0,
+        "n": 64
+      },
+      "smallest_change": {
+        "accuracy": 0.0,
+        "n": 70
+      }
+    }
+  },
+  "created_at": "2026-09-29T13:28:36.547599Z",
+  "satquery_version": "0.1.0",
+  "registry_digest": "81dda6fb648916d8",
+  "git_commit": "dfa5eb1",
+  "runtime_s": 379.398
+}

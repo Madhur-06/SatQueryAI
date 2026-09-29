@@ -1,11 +1,17 @@
-"""Write an EvalReport as JSON (complete, with per-sample records) and a Markdown summary."""
+"""Write an EvalReport as three files sharing one stem:
+
+* ``<stem>.json``: metadata + metrics (small, meant to be committed);
+* ``<stem>.records.jsonl.gz``: one JSON line per sample (predictions, references, errors);
+* ``<stem>.md``: human-readable summary.
+"""
 
 from __future__ import annotations
 
+import gzip
 from pathlib import Path
 from typing import Any
 
-from satquery.eval.runner import EvalReport
+from satquery.eval.runner import EvalReport, SampleRecord
 
 N_EXAMPLES = 10
 
@@ -63,8 +69,21 @@ def to_markdown(report: EvalReport) -> str:
 def write_report(report: EvalReport, out_dir: Path) -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = report.created_at.strftime("%Y%m%dT%H%M%SZ")
-    base = out_dir / f"{report.benchmark}_{report.tool}_{stamp}"
-    json_path, md_path = base.with_suffix(".json"), base.with_suffix(".md")
-    json_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
-    md_path.write_text(to_markdown(report), encoding="utf-8")
+    stem = out_dir / f"{report.benchmark}_{report.tool}_{stamp}"
+    json_path = stem.with_suffix(".json")
+    md_path = stem.with_suffix(".md")
+    records_path = stem.with_name(stem.name + ".records.jsonl.gz")
+    summary = report.model_dump_json(indent=2, exclude={"records"}) + "\n"
+    json_path.write_text(summary, encoding="utf-8", newline="\n")
+    with gzip.open(records_path, "wt", encoding="utf-8") as fh:
+        for record in report.records:
+            fh.write(record.model_dump_json() + "\n")
+    md_path.write_text(to_markdown(report), encoding="utf-8", newline="\n")
     return json_path, md_path
+
+
+def read_records(json_path: Path) -> list[SampleRecord]:
+    """Per-sample records written next to a report's summary JSON."""
+    records_path = json_path.with_name(json_path.stem + ".records.jsonl.gz")
+    with gzip.open(records_path, "rt", encoding="utf-8") as fh:
+        return [SampleRecord.model_validate_json(line) for line in fh if line.strip()]

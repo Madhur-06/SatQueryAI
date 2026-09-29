@@ -120,18 +120,30 @@ def test_plan_rejects_change_with_one_image(registry, opt_bundle) -> None:
     assert exc.value.code is ErrorCode.TASK_INPUT_MISMATCH
 
 
-def test_plan_rejects_builtup_without_swir(registry, opt_bundle) -> None:
+def test_plan_rejects_builtup_area_without_swir(registry, opt_bundle) -> None:
+    area_question = spec(TaskType.VQA, [TargetClass.BUILTUP], answer=AnswerType.AREA)
     with pytest.raises(SatQueryError) as exc:
-        Planner(registry).plan(spec(TaskType.VQA, [TargetClass.BUILTUP]), opt_bundle)
+        Planner(registry).plan(area_question, opt_bundle)
     assert exc.value.code is ErrorCode.BAND_ROLE_MISSING
     problems = exc.value.info.details["candidates"]["ndbi_builtup_mask"]
     assert problems == ["optical: no swir1 band identified"]
 
 
 def test_plan_reports_modality_mismatch(registry, sar_bundle) -> None:
+    area_question = spec(TaskType.VQA, [TargetClass.VEGETATION], answer=AnswerType.AREA)
     with pytest.raises(SatQueryError) as exc:
-        Planner(registry).plan(spec(TaskType.VQA, [TargetClass.VEGETATION]), sar_bundle)
+        Planner(registry).plan(area_question, sar_bundle)
     assert exc.value.code is ErrorCode.MODALITY_MISMATCH
+
+
+@pytest.mark.parametrize("answer", [AnswerType.YES_NO, AnswerType.COUNT, AnswerType.FREE_TEXT])
+def test_plan_falls_back_to_vlm_when_target_cannot_be_mapped(registry, opt_bundle, answer) -> None:
+    """RGB/4-band inputs: non-area questions about built-up go to the VLM, with a warning."""
+    plan = Planner(registry).plan(spec(TaskType.VQA, [TargetClass.BUILTUP], answer), opt_bundle)
+    assert plan.recipe == "vlm"
+    assert tools_of(plan) == ["vlm_vqa"]
+    assert any("vision-language" in w for w in plan.warnings)
+    assert any("fallback" in r for r in plan.rationale)
 
 
 def test_better_tool_is_picked_up_without_planner_changes(opt_bundle) -> None:

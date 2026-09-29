@@ -21,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 ml = [
     "torch>=2.4",
+    "torchvision>=0.19",  # Qwen3-VL's processor imports its video processor
     "transformers>=4.57",
     "accelerate>=1.0",
 ]
@@ -70,7 +71,7 @@ known-first-party = ["satquery"]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --import-mode=importlib"
 markers = [
-    "ml: needs the [ml] extra (torch/transformers); skipped otherwise",
+    "ml: loads real model weights; runs only with --run-ml (just test-ml)",
     "eval: needs the [eval] extra; skipped otherwise",
 ]
 filterwarnings = [

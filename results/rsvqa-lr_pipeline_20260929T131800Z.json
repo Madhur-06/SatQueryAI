@@ -1,0 +1,40 @@
+{
+  "benchmark": "rsvqa-lr",
+  "split": "test",
+  "tool": "pipeline",
+  "tool_version": "0.1.0",
+  "is_mock": false,
+  "mode": "pipeline",
+  "subset": 500,
+  "seed": 0,
+  "n_samples": 500,
+  "n_errors": 8,
+  "metrics": {
+    "n": 500,
+    "overall_accuracy": 0.428,
+    "average_accuracy": 0.3204925693557641,
+    "per_type": {
+      "comp": {
+        "accuracy": 0.3010752688172043,
+        "n": 186
+      },
+      "count": {
+        "accuracy": 0.18571428571428572,
+        "n": 140
+      },
+      "presence": {
+        "accuracy": 0.7951807228915663,
+        "n": 166
+      },
+      "rural_urban": {
+        "accuracy": 0.0,
+        "n": 8
+      }
+    }
+  },
+  "created_at": "2026-09-29T13:18:00.661716Z",
+  "satquery_version": "0.1.0",
+  "registry_digest": "81dda6fb648916d8",
+  "git_commit": "dfa5eb1",
+  "runtime_s": 8.819
+}

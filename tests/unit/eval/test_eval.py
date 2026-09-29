@@ -15,7 +15,7 @@ from satquery.eval.metrics import (
     normalize_answer,
     vqa_accuracy,
 )
-from satquery.eval.report import to_markdown, write_report
+from satquery.eval.report import read_records, to_markdown, write_report
 from satquery.eval.runner import run_eval
 from satquery.types import TaskType
 
@@ -130,7 +130,10 @@ def test_run_eval_mock_vqa(rsvqa_root: Path, tmp_path: Path) -> None:
     # Mock prior: "yes" for yes/no, "0" for counts -> 2 of 3 correct here.
     assert report.metrics["overall_accuracy"] == pytest.approx(2 / 3)
     json_path, md_path = write_report(report, tmp_path / "results")
-    assert json.loads(json_path.read_text())["benchmark"] == "rsvqa-lr"
+    summary = json.loads(json_path.read_text())
+    assert summary["benchmark"] == "rsvqa-lr"
+    assert "records" not in summary  # per-sample records live in the .jsonl.gz
+    assert read_records(json_path) == report.records
     md = md_path.read_text(encoding="utf-8")
     assert "Mock tool" in md
     assert "Per question type" in md

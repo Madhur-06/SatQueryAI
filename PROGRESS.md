@@ -121,16 +121,34 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
 - **README**: setup, settings, mermaid architecture, API, "adding a tool" walkthrough, evaluation.
 - 217 tests pass (loaders and runner run on tiny synthetic copies of each benchmark's file layout). `just lint` (ruff + UI type-check) is clean.
 
+### Follow-up: real benchmarks, downloads and zero-shot VLM (2026-09-29)
+- **Downloads.** `satquery-eval --download rsvqa-lr | cdvqa` (also `just download <name>`) streams to `.part` and resumes safely.
+  - RSVQA-LR: files are checked against the MD5s read from the Zenodo API. 772 images plus the train/val/test JSONs.
+  - CDVQA: annotations from GitHub. Images are the SECOND train set from the SECOND authors' page (captain-whu.github.io/SCD), a 2.41 GB RAR that is size-checked and extracted with the libarchive `tar` (Git's GNU tar can't read RAR).
+    - I read the listing of the larger Google Drive zip remotely first: it only bundles this RAR and a test zip, so it isn't needed.
+    - 2,968 pairs; every image referenced by test and test2 resolves.
+- **Planner fallback** (found by running RSVQA-LR). On RGB-only images the classical tools can't map water / built-up / vegetation (no NIR/SWIR), and the pipeline rejected 87% of questions.
+  - Now yes/no, count and free-text questions fall back to the vision-language tool, with a warning that says why.
+  - Area questions are still rejected with the actionable `band_role_missing` error (only a mask gives hectares).
+  - Errors on the 500-question subset went from 437 to 8.
+- **`[ml]` extra** now includes `torchvision` (Qwen3-VL's processor imports its video processor). Installed: torch 2.14 (CPU), transformers 5.17. Weights for `Qwen/Qwen3-VL-2B-Instruct` are in the HF cache (4.0 GB).
+  - `just test-ml` (pytest `--run-ml`) passes with real weights: VQA, caption, two-image change.
+  - VQA prompts ask for one-word / number answers. Prompts were not tuned beyond a 10-question sanity probe (avoids test-set leakage).
+- **Eval reports** are split into a summary `.json` (committed), `.records.jsonl.gz` per-sample records (3.6 MB → 186 KB for the full RSVQA-LR test) and `.md`.
+- **Baselines** are in `results/README.md`.
+  - RSVQA-LR full test, mock: OA 39.9 / AA 30.9. On the 500-question subset (seed 0), mock and pipeline both score 42.8 / 32.0.
+  - CDVQA 1,000-question subset: mock and pipeline both score 29.2 / 14.4. Explanation in the open questions below.
+
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
 - [x] All four input configurations work end-to-end on synthetic data with a clean trace (e2e API tests).
 - [x] Water / built-up / change queries return real classical results with hectares and overlays; VLM tasks return labelled mock outputs through the same pipeline.
-- [ ] Eval CLI on a real benchmark subset. The CLI works end-to-end on synthetic benchmark layouts, but no real data is downloaded yet (awaiting confirmation).
+- [x] Eval CLI runs end-to-end on real benchmark subsets (RSVQA-LR, CDVQA) with mock, pipeline and zero-shot Qwen tools.
 - [x] README with setup, mermaid architecture and how to add a tool.
 
 ## Next
-- Download RSVQA-LR (test split) once confirmed, then record the mock baseline (`vlm_vqa`) and a `pipeline` baseline in `results/`.
-- Qwen3-VL zero-shot baseline: needs `just install-ml` plus the weights (about 4–5 GB); awaiting go-ahead.
+- Record Qwen3-VL zero-shot on RSVQA-LR (500, seed 0; running) and CDVQA.
+- VRSBench download command (HF `xiang709/VRSBench`) for caption / grounding baselines.
 - Phase 2 candidates:
   - an LLM function-calling classifier behind `TaskClassifier`;
   - learned water/built-up/change models registered at higher priority;
@@ -139,9 +157,16 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
   - multi-target queries.
 
 ## Open questions / decisions log
-- CDVQA images: the repo ships annotations only (images come from SECOND). Where should we get them? The loader assumes `im1/` + `im2/` folders (configurable) until confirmed.
+- **CDVQA licence:** the SECOND page states no licence or terms of use for the images. Check before redistributing images or publishing derived results.
+- **CDVQA pipeline = always "yes".**
+  - Otsu thresholding always splits the CVA histogram into two classes, so some change is always detected.
+  - Class-specific questions ("did the trees change?") can't be mapped on RGB.
+  - CDVQA's categorical answers (`NVG_surface`, `0_to_10`) are not produced.
+  - Needs a learned change model and a benchmark answer adapter (Phase 2).
+  - A bimodality/no-change test for CVA is a cheap improvement to consider.
+- **RSVQA "What is the amount of X?"** questions get "yes" from Qwen3-VL-2B even with the number-or-yes/no prompt. This is a zero-shot limitation, left as is.
+- The Qwen tool runs at ~6 s per question on CPU. Full-split zero-shot runs are hours; use subsets or a GPU.
 - BigEarthNet.txt: per-band file naming inside BigEarthNet v2 patch folders is assumed (`<patch>_B02.tif` ...); verify on a real copy. Grounding rows are skipped until their box format is verified.
-- The Qwen tool (`qwen_vl_zeroshot`) has not been run yet; its generate/decode path follows the model card and is unverified until weights are available.
 - UI not browser-tested in-session (Chrome extension not connected). API verified with real requests.
 - Starlette warns that `httpx` for its TestClient is deprecated (suggests `httpx2`). Harmless for now; revisit once the replacement is verified.
 - Whole rasters are read into memory. Tiling/stitching utilities exist and are tested, but tools don't use them yet (fine for typical scene sizes; needed for very large rasters).
