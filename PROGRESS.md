@@ -39,8 +39,30 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
 - `render`: quicklooks, RGBA mask layers, blends, PNG writer.
 - 90 tests pass, including every failure case in the spec.
 
+### M3: Tool registry & tools, `satquery/tools/` (2026-09-29)
+- `Tool` ABC (`base.py`). Class-level `name`, `version`, `tasks`, `input_configs`, `produces` (Capability), `requires` (layer count, modality family, band-role alternatives, named upstream inputs), and `Params` (pydantic, `extra="forbid"`, bounded).
+  - `invoke()` checks availability → params → requirements → upstream, then runs and stamps the runtime and mock flag.
+  - Errors: `INVALID_PARAMS`, `MODALITY_MISMATCH`, `BAND_ROLE_MISSING`, `TOOL_UNAVAILABLE`.
+- `ToolOutput`: text, boolean `masks` (`"mask"` = primary), continuous `rasters`, `geojson`, `boxes`, scalar `values`, `confidence` + `confidence_basis`, runtime, `is_mock`, warnings. `summary()` is JSON-safe for the trace.
+- `Registry`: register, get, `find(task, config, capability, layers)` ranked available > real > priority, `export_json()` (full param JSON schemas) and `digest()`.
+- Classical tools, each with a documented confidence heuristic:
+  - `ndwi_water_mask` (MNDWI automatically when SWIR is present), `ndbi_builtup_mask` (excludes NDVI > 0.3 and water), `ndvi_vegetation_mask`.
+  - `sar_water_otsu`: Lee filter, Otsu in dB, plausibility cap at -12 dB with a warning.
+  - `optsar_fusion_rules`: union/intersection; agree/optical-only/SAR-only masks; agreement IoU feeds confidence.
+  - `change_cva`: common bands, robust linear normalisation, standardised magnitude, Otsu.
+  - `sar_logratio_change`: increase/decrease masks.
+  - `mask_compare`: gain/loss per class.
+  - `area_stats`: every upstream mask → pixels, hectares (geodesic on geographic CRS), fraction, connected regions.
+- Mocks `vlm_vqa`, `vlm_caption`, `grounding`, `change_vqa`: labelled `[MOCK]`, confidence 0, trivial prior answers ("yes" / "0") so eval gets a floor baseline.
+- `qwen_vl_zeroshot` (priority over mocks). Unavailable unless `SATQUERY_VLM_ENABLED=true` and torch + transformers are installed. Lazy import and load; `local_files_only` unless `SATQUERY_VLM_ALLOW_DOWNLOAD=true`.
+  - **Not exercised end-to-end yet:** that needs the [ml] extra and the weights (awaiting your go-ahead).
+- Accuracy on the synthetic truth: water / built-up / vegetation / CVA / log-ratio masks all reach IoU > 0.9. Built-up gain hectares are within 3% of truth, and geodesic hectares on EPSG:4326 within 2%.
+- 124 tests pass.
+
+**Finding:** histogram matching (spec'd for temporal pairs) created about 1,200 false-change pixels over unchanged water. New built-up covering just 7% of the scene shifts the rank mapping for every other class. CVA now defaults to a robust (MAD-trimmed) linear gain/offset normalisation. Histogram matching stays available as `normalisation="histogram"`, and a test documents the failure mode.
+
 ## Next
-- M3: `satquery/tools/`: Tool base, Registry, classical tools, mocks, lazy Qwen3-VL tool.
+- M4: `satquery/agent/`: rule-based TaskClassifier, recipe-driven Planner, Executor, AnswerComposer, ExecutionTrace, `analyze()`.
 
 ## Open questions / decisions log
 - Starlette warns that `httpx` for its TestClient is deprecated (suggests `httpx2`). Harmless for now; revisit once the replacement is verified.

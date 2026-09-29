@@ -21,6 +21,7 @@ class ErrorCode(StrEnum):
     INCOMPATIBLE_PAIR = "incompatible_pair"
     BAND_MAPPING_REQUIRED = "band_mapping_required"
     BAND_ROLE_MISSING = "band_role_missing"
+    MODALITY_MISMATCH = "modality_mismatch"
     # planning / execution
     TASK_INPUT_MISMATCH = "task_input_mismatch"
     NO_TOOL = "no_tool"

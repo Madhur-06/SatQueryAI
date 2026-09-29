@@ -62,6 +62,28 @@ class BandRole(StrEnum):
     HV = "hv"
 
 
+class Capability(StrEnum):
+    """What a tool produces; the planner chains tools by capability, not by name."""
+
+    MASK_WATER = "mask:water"
+    MASK_BUILTUP = "mask:builtup"
+    MASK_VEGETATION = "mask:vegetation"
+    MASK_FUSED = "mask:fused"
+    MASK_CHANGE = "mask:change"
+    MASK_CLASS_CHANGE = "mask:class_change"  # gain / loss of one class between dates
+    AREA_STATS = "stats:area"
+    ANSWER = "text:answer"
+    CAPTION = "text:caption"
+    CHANGE_ANSWER = "text:change_answer"
+    BOXES = "boxes"
+
+
+TARGET_MASK: dict[TargetClass, Capability] = {
+    TargetClass.WATER: Capability.MASK_WATER,
+    TargetClass.BUILTUP: Capability.MASK_BUILTUP,
+    TargetClass.VEGETATION: Capability.MASK_VEGETATION,
+}
+
 # Canonical layer keys inside an InputBundle, per input configuration.
 LAYER_KEYS: dict[InputConfig, tuple[str, ...]] = {
     InputConfig.SINGLE_OPT: ("optical",),

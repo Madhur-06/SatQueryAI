@@ -97,3 +97,18 @@ def test_histogram_match_removes_gain(temporal_pair) -> None:
     matched = temporal.histogram_match(d2, d1, v2, v1)
     after = abs(matched[3][stable].mean() - d1[3][stable].mean())
     assert after < 0.5 * before
+
+
+def test_linear_normalise_recovers_gain_despite_change(temporal_pair) -> None:
+    t1, t2 = temporal_pair
+    d1, v1 = read_raster(inspect_raster(t1.path))
+    d2, v2 = read_raster(inspect_raster(t2.path))
+    normalised, coeffs = temporal.linear_normalise(d2, d1, v2, v1)
+    # Gain is well determined only in high-contrast bands (NIR, SWIR); in low-contrast
+    # bands gain and offset trade off, but the mapping itself is still right.
+    for band in (3, 4, 5):
+        assert coeffs[band][0] == pytest.approx(1.08, abs=0.02)
+    stable = ~t2.truth["builtup_gain"]
+    for band in range(6):
+        bias = normalised[band][stable].mean() - d1[band][stable].mean()
+        assert abs(bias) < 0.01 * d1[band][stable].mean()

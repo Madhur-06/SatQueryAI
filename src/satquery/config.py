@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     vlm_model_id: str = "Qwen/Qwen3-VL-2B-Instruct"
     """Hugging Face model id for the optional zero-shot VLM tool ([ml] extra)."""
     vlm_enabled: bool = False
-    """The VLM tool only loads (and may download weights) when this is explicitly true."""
+    """The VLM tool is only offered to the planner when this is explicitly true."""
+    vlm_allow_download: bool = False
+    """If false, weights must already be in the local Hugging Face cache (no network)."""
+    vlm_device: str = "auto"
 
 
 @lru_cache
