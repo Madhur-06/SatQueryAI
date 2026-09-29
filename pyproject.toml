@@ -68,8 +68,14 @@ known-first-party = ["satquery"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers --import-mode=importlib"
 markers = [
     "ml: needs the [ml] extra (torch/transformers); skipped otherwise",
     "eval: needs the [eval] extra; skipped otherwise",
+]
+filterwarnings = [
+    # rasterio's own transform helpers still use Affine `*` (affine 3 prefers `@`).
+    "ignore:Use `@` matmul:PendingDeprecationWarning:rasterio",
+    # Fixtures intentionally open ungeoreferenced PNG / no-CRS files.
+    "ignore::rasterio.errors.NotGeoreferencedWarning",
 ]

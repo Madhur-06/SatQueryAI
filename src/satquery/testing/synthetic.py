@@ -99,13 +99,18 @@ def _optical_array(
     return np.clip(np.round(data), 1, 10_000).astype(np.uint16)
 
 
-def _write_geotiff(
+def write_array(
     path: Path,
     data: np.ndarray,
-    geometry: SceneGeometry,
-    band_names: tuple[str, ...] | None,
-    acquired: date | None,
-) -> None:
+    geometry: SceneGeometry | None = None,
+    *,
+    band_names: tuple[str | None, ...] | None = None,
+    tags: dict[str, str] | None = None,
+    band_tags: list[dict[str, str]] | None = None,
+    acquired: date | None = None,
+) -> Path:
+    """Write an arbitrary ``(bands, H, W)`` array as a GeoTIFF on ``geometry``'s grid."""
+    geometry = geometry or SceneGeometry(size=data.shape[1])
     profile = {
         "driver": "GTiff",
         "width": data.shape[2],
@@ -121,9 +126,16 @@ def _write_geotiff(
         dst.write(data)
         if band_names:
             for i, name in enumerate(band_names, start=1):
-                dst.set_band_description(i, name)
+                if name:
+                    dst.set_band_description(i, name)
+        all_tags = dict(tags or {})
         if acquired is not None:
-            dst.update_tags(ACQUISITION_DATE=acquired.isoformat())
+            all_tags["ACQUISITION_DATE"] = acquired.isoformat()
+        if all_tags:
+            dst.update_tags(**all_tags)
+        for i, bt in enumerate(band_tags or [], start=1):
+            dst.update_tags(i, **bt)
+    return path
 
 
 def write_optical(
@@ -149,7 +161,7 @@ def write_optical(
         classes["builtup"] = builtup_mask(size)
     data = _optical_array(size, n_bands, classes, gain, np.random.default_rng(seed))
     names = OPTICAL_BANDS[:n_bands] if band_descriptions else None
-    _write_geotiff(path, data, geometry, names, acquired)
+    write_array(path, data, geometry, band_names=names, acquired=acquired)
     truth = dict(classes)
     truth.setdefault("builtup", np.zeros((size, size), dtype=bool))
     return SyntheticRaster(path=path, geometry=geometry, acquired=acquired, truth=truth)
@@ -179,7 +191,7 @@ def write_sar(
     if scale == "db":
         data = 10 * np.log10(data)
     names = SAR_BANDS if band_descriptions else None
-    _write_geotiff(path, data.astype(np.float32), geometry, names, acquired)
+    write_array(path, data.astype(np.float32), geometry, band_names=names, acquired=acquired)
     return SyntheticRaster(path=path, geometry=geometry, acquired=acquired, truth={"water": water})
 
 
