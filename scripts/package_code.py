@@ -13,7 +13,14 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-INCLUDE = ("src/benvqa/", "configs/", "scripts/", "requirements-kaggle.txt", "pyproject.toml")
+INCLUDE = (
+    "src/benvqa/",
+    "src/satquery/",
+    "configs/",
+    "scripts/",
+    "requirements-kaggle.txt",
+    "pyproject.toml",
+)
 
 
 def main() -> None:

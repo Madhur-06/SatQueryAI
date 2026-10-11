@@ -422,11 +422,11 @@ def main(argv: list[str] | None = None) -> None:
             "image_size": cfg.images.size,
         }
         if cap_recs:
-            from satquery.eval.metrics.caption import caption_scores
-
             preds = {str(r["qid"]): r["prediction"] for r in cap_recs}
             refs = {str(r["qid"]): [r["reference"]] for r in cap_recs}
             try:
+                from satquery.eval.metrics.caption import caption_scores
+
                 result["captions"] = caption_scores(preds, refs)
             except ImportError as exc:  # pycocoevalcap missing
                 result["captions"] = {"n": len(cap_recs), "error": str(exc)}
