@@ -103,11 +103,14 @@ def test_requirement_errors(registry, opt_bundle) -> None:
         run_tool(registry.get("area_stats"), opt_bundle)
 
 
-def test_qwen_is_lazy_and_unavailable(registry, opt_bundle) -> None:
-    assert "transformers" not in sys.modules
+def test_qwen_is_lazy_and_unavailable(registry, opt_bundle, monkeypatch) -> None:
+    # Other tests may have imported transformers already; hide it so the check below only
+    # sees an import made by the tool itself.
+    monkeypatch.delitem(sys.modules, "transformers", raising=False)
     with pytest.raises(SatQueryError) as exc:
         run_tool(registry.get("qwen_vl_zeroshot"), opt_bundle, ["optical"], query="Any water?")
     assert exc.value.code is ErrorCode.TOOL_UNAVAILABLE
+    assert "transformers" not in sys.modules
 
 
 def test_output_summary_is_json_safe(registry, opt_bundle) -> None:
