@@ -1,0 +1,35 @@
+# M5a smoke test: Qwen3.5-0.8B, one local GPU (or CPU), dev shards from the dry-run build.
+#   PYTHONPATH=src python -m benvqa.train --config configs/smoke_08b.yaml
+seed: 1234
+model:
+  name: Qwen/Qwen3.5-0.8B
+  tokenizer: Qwen/Qwen3.5-0.8B
+  backend: hf
+  dtype: float16
+  gradient_checkpointing: true
+lora: {r: 16, alpha: 32, dropout: 0.0, target: all-linear, vision: true}
+images:
+  composites: [rgb, nir_swir, sar]
+  size: 256
+train:
+  micro_batch: 2
+  grad_accum: 4
+  lr: 1.0e-4
+  schedule: {type: wsd, warmup_steps: 5, decay_fraction: 0.15}
+  planned_images: 400
+  max_steps: 20
+  log_every: 1
+data:
+  hub_dataset: local:data/benvqa/dev_hub
+  num_workers: 2
+  cache_dir: data/benvqa/cache
+  cache_budget_gb: 2
+checkpoint:
+  dir: data/benvqa/smoke/ckpt
+  every_minutes: 20
+  every_steps: 5
+  keep_local: 2
+  hub_repo: local:data/benvqa/smoke/mirror
+  keep_hub: 3
+session: {max_session_hours: 11.3}
+eval: {every_steps: 10, val_questions: 64, batch_size: 8}

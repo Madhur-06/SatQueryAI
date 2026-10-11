@@ -1,0 +1,47 @@
+# Qwen3.5-4B 16-bit LoRA on Kaggle 2x T4 (fp16, DDP via torchrun --nproc_per_node 2).
+# Schema and defaults: src/benvqa/config.py. Replace <HF_USER> (or override on the command
+# line: data.hub_dataset=hub:me/benvqa-shards checkpoint.hub_repo=hub:me/qwen35-4b-benvqa-lora).
+seed: 1234
+model:
+  name: unsloth/Qwen3.5-4B
+  tokenizer: Qwen/Qwen3.5-4B      # always the official tokenizer/processor
+  backend: unsloth                # fallback: hf (transformers + PEFT + plain DDP)
+  dtype: float16                  # Turing: no bf16, no FlashAttention-2
+  gradient_checkpointing: true
+  attn_implementation: sdpa
+lora: {r: 16, alpha: 32, dropout: 0.0, target: all-linear, vision: true}
+images:
+  composites: [rgb, nir_swir, sar]
+  size: 256                       # 64 visual tokens per image (192 -> 36 for the ablation)
+  modality_dropout: {all: 0.60, rgb+nir_swir: 0.15, rgb+sar: 0.10, rgb: 0.10, sar: 0.05}
+conversation:
+  group_pick_probs: {binary_yes: 0.25, binary_no: 0.25, mcq: 0.5}
+  p_drop_presence: 0.3
+  p_caption: 0.2
+  caption_turn_weight: 1.0
+  shuffle_mcq_options: true
+train:
+  micro_batch: 2
+  grad_accum: 8                   # x 2 GPUs x 2 = 32 conversations (~185 answers) per step
+  lr: 1.0e-4
+  schedule: {type: wsd, warmup_steps: 100, decay_fraction: 0.15}
+  planned_images: 160000          # set from the M5b throughput test
+  max_grad_norm: 1.0
+  max_len: 1024
+  pool_size: 64
+data:
+  hub_dataset: hub:<HF_USER>/benvqa-shards
+  num_workers: 2
+  interleave: 2
+  prefetch_shards: 2
+  cache_dir: /kaggle/tmp/shards
+  cache_budget_gb: 6
+checkpoint:
+  dir: /kaggle/working/ckpt
+  every_minutes: 20
+  every_steps: 250
+  keep_local: 2
+  hub_repo: hub:<HF_USER>/qwen35-4b-benvqa-lora
+  keep_hub: 3
+session: {max_session_hours: 11.3}
+eval: {every_steps: 1000, val_questions: 2000, batch_size: 8}

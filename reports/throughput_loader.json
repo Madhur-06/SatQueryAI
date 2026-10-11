@@ -1,0 +1,20 @@
+{
+ "workers": 2,
+ "micro_batch": 2,
+ "conversations_per_s": 472.5,
+ "qa_per_s": 2785.3,
+ "tokens_per_s": 271942,
+ "qa_per_conversation": 5.89,
+ "tokens_per_conversation": 575.6,
+ "padding_fraction": 0.0095,
+ "margin_over_need": 315.0,
+ "stage_ms": {
+  "read_shard": 1.007,
+  "conversation": 0.204,
+  "render_tokenize": 0.614,
+  "images_patchify": 2.645,
+  "collate": 0.129,
+  "total": 4.6
+ },
+ "conversation_cost_ms_p50": 4.6
+}

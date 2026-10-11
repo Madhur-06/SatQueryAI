@@ -100,3 +100,18 @@ def resize(img: np.ndarray, size: int) -> np.ndarray:
     if img.shape[:2] == (size, size):
         return img
     return np.asarray(Image.fromarray(img).resize((size, size), Image.Resampling.BICUBIC))
+
+
+def resolve_composites(
+    names: list[str], overrides: dict[str, dict] | None = None
+) -> dict[str, Composite]:
+    """Configured composites: defaults, with per-composite field overrides from the config."""
+    out: dict[str, Composite] = {}
+    for name in names:
+        base = DEFAULT_COMPOSITES[name]
+        extra = (overrides or {}).get(name)
+        if extra:
+            merged = {**base.__dict__, **extra}
+            base = composite_from_config(merged)
+        out[name] = base
+    return out

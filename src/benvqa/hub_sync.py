@@ -256,7 +256,11 @@ class FlakyMirror:
 
 
 def make_mirror(spec: str, **kwargs) -> Mirror:
-    """``local:/path`` or ``hub:<repo_id>`` (or a bare ``user/repo``)."""
+    """``local:/path``, ``hub:<repo_id>`` (or a bare ``user/repo``), or ``flaky:<p>:<spec>``
+    (fault injection for tests)."""
+    if spec.startswith("flaky:"):
+        _, p, rest = spec.split(":", 2)
+        return FlakyMirror(make_mirror(rest, **kwargs), p=float(p))
     if spec.startswith("local:"):
         return LocalMirror(Path(spec.removeprefix("local:")))
     return HubMirror(spec.removeprefix("hub:"), **kwargs)

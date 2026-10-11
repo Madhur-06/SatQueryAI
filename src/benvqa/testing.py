@@ -348,3 +348,48 @@ def range_server(files: dict[str, Path], drops: list[int] | None = None) -> Iter
 def url_of(srv: _Server, name: str) -> str:
     host, port = srv.server_address[:2]
     return f"http://{host}:{port}/{name}"
+
+
+class FakeTokenizer:
+    """Deterministic word-level stand-in for the Qwen tokenizer (stream/trainer tests).
+
+    Special tokens get fixed ids; every other word / punctuation / whitespace run is hashed
+    to an id in ``[1000, vocab_size)``. Picklable, so DataLoader workers can use it.
+    """
+
+    SPECIALS = (
+        "<|endoftext|>",
+        "<|im_start|>",
+        "<|im_end|>",
+        "<|vision_start|>",
+        "<|vision_end|>",
+        "<|image_pad|>",
+        "<think>",
+        "</think>",
+    )
+
+    def __init__(self, vocab_size: int = 4096) -> None:
+        import re
+
+        self.vocab_size = vocab_size
+        self.pad_token_id = 0
+        self._split = re.compile("(" + "|".join(re.escape(s) for s in self.SPECIALS) + ")")
+        self._words = re.compile(r"\w+|[^\w\s]|\s+")
+
+    def _id(self, piece: str) -> int:
+        return 1000 + _seed(piece) % (self.vocab_size - 1000)
+
+    def __call__(self, text: str, add_special_tokens: bool = False) -> dict[str, list[int]]:
+        ids: list[int] = []
+        for part in self._split.split(text):
+            if part in self.SPECIALS:
+                ids.append(self.SPECIALS.index(part))
+            elif part:
+                ids += [self._id(w) for w in self._words.findall(part)]
+        return {"input_ids": ids}
+
+    def __getstate__(self) -> dict:
+        return {"vocab_size": self.vocab_size}
+
+    def __setstate__(self, state: dict) -> None:
+        self.__init__(state["vocab_size"])

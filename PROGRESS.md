@@ -213,6 +213,25 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
   - patchify bit-exact.
 - Fixed a Phase 1 test that assumed no earlier test imports transformers (it now hides the module and checks the tool doesn't import it).
 
+### M4: Streaming loader (2026-10-11)
+- `benvqa.config`: one pydantic schema for the YAML config (`configs/kaggle_t4x2.yaml`, `configs/smoke_08b.yaml`), `key=value` overrides, and a `data_hash` that resume must match.
+- `benvqa.data.stream`:
+  - G = world × workers streams, each a pure function of `(seed, stream_id)`: per-epoch shard permutation, groups of 2 interleaved shards, length-bucketed pools of 64;
+  - the cursor counts micro-batches; resume skips whole groups/pools arithmetically and rotates worker→stream so DataLoader round-robin continues exactly;
+  - a background `ShardFetcher` per stream (look-ahead, reference-counted deletion, budget);
+  - train-only assertions (config, shard paths, row `split`).
+- `benvqa.data.collate`: right-padded batch, `mm_token_type_ids`, uint8 tiles, label positions only, turn ids/weights/categories.
+- Tests (9):
+  - plan partitions and `locate` arithmetic;
+  - batch invariants;
+  - exact resume (next 100 micro-batches identical after 37 and 64 consumed, across epochs);
+  - 2-worker DataLoader order == in-process order;
+  - disjoint ranks;
+  - 40% injected download failures → identical stream;
+  - consumed shards deleted;
+  - non-train data rejected.
+- Throughput on real dev shards (`reports/throughput_loader.json`): **472 conversations/s** with 2 workers (2,785 QAs/s), 0.95% padding, 5.89 QAs and 576 tokens per conversation. Per-conversation CPU cost is 4.6 ms, mostly composites + resize + patchify. That is ~300× what one rank needs.
+
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
 - [x] All four input configurations work end-to-end on synthetic data with a clean trace (e2e API tests).
