@@ -145,6 +145,16 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
   - Before this, PyPI's torch was CPU-only on Windows but bundled CUDA 13 on Linux, so "CPU install" meant different things per OS.
   - Qwen loads on `cuda:0` in bf16 (4.26 GB VRAM). It runs at 0.46 s per two-image question, vs ~6.4 s per single-image question on CPU.
 
+### Docs: plain-language guide (2026-09-29)
+- `PROJECT_GUIDE.md`: non-technical walkthrough (glossary with full forms, request journey, tool list, folder tour, how to run on Windows, limits).
+
+# Phase 2.1: Qwen3.5-4B LoRA for BigEarthNet.txt VQA (`src/benvqa/`)
+Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
+
+### M0: Recon & plan (2026-10-11)
+- Verified the dataset, Zenodo, model and template facts against primary sources; written up in the plan.
+- New facts: the model needs `mm_token_type_ids`; MTP weights are not even loaded by transformers; the `unsloth/` repo ships a different tokenizer; S1 tiles look like dB already.
+
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
 - [x] All four input configurations work end-to-end on synthetic data with a clean trace (e2e API tests).
@@ -164,6 +174,7 @@ Phase 1 plan: walking skeleton, no training. Milestones M1–M6. Tooling: uv + j
   - multi-target queries.
 
 ## Open questions / decisions log
+- Fixed (2026-10-11): `src/satquery/eval/datasets/` was untracked because the `.gitignore` rule `datasets/` matched it; the rule is now `/datasets/` and the package is committed.
 - **CDVQA licence:** the SECOND page states no licence or terms of use for the images. Check before redistributing images or publishing derived results.
 - **CDVQA pipeline = always "yes".**
   - Otsu thresholding always splits the CVA histogram into two classes, so some change is always detected.
