@@ -141,9 +141,105 @@ assert str(report.get("verify", "")).startswith("ok"), "index does not match the
     )
 
 
+def train_notebook() -> dict:
+    return notebook(
+        [
+            md("""
+# benvqa: Qwen3.5-4B LoRA on BigEarthNet.txt (Kaggle, GPU T4 x2)
+
+Set `MODE` in the settings cell, then **Save Version -> Save & Run All (Commit)** with
+accelerator **GPU T4 x2** and internet on. Secrets: `HF_TOKEN` (write), optional
+`WANDB_API_KEY`, `GITHUB_TOKEN`.
+
+| MODE | what it does | time |
+|---|---|---|
+| `smoke` | M5b: environment + fast-kernel check, micro-batch sweep (real DDP steps), Hub checkpoint round trip, recommended `planned_images` -> `reports/m5b_smoke.json` | ~30-45 min |
+| `train` | M7: train until the session guard (11.3 h). **Re-run the same notebook to continue**: it resumes from the Hub (`ckpt/LATEST`) with the exact data position | 11.3 h |
+| `eval` | M6/M8: bench evaluation -> `reports/bench_results.md` (+ copied to the Hub repo) | ~1 h |
+
+Full procedure: `docs/kaggle_runbook.md`.
+"""),
+            SESSION_START,
+            GET_CODE,
+            code("""
+!pip install -q -r requirements-kaggle.txt 2>&1 | tail -3
+"""),
+            code("""
+# ---------------- settings ----------------
+MODE = "smoke"            # "smoke" | "train" | "eval"
+BACKEND = "hf"            # "hf" (verified) | "unsloth" (try it in a smoke run first)
+DECAY_NOW = False         # train: True in the final session (WSD decay to 0)
+EVAL_RUNS = "a,b"         # eval: "a,b" zero-shot (M6), "c,d,e" fine-tuned (M8)
+CAPTIONS = 200            # eval: bench captions to generate (fine-tuned runs)
+HOURS_PLANNED = 45        # smoke: total 2-GPU wall-clock hours you plan to train
+EXTRA = []                # extra config overrides, e.g. ["train.planned_images=180000"]
+# -------------------------------------------
+import os, subprocess, sys, torch
+from huggingface_hub import HfApi
+HF_USER = HfApi().whoami()["name"]
+SETS = [f"data.hub_dataset=hub:{HF_USER}/benvqa-shards",
+        f"checkpoint.hub_repo=hub:{HF_USER}/qwen35-4b-benvqa-lora",
+        f"model.backend={BACKEND}", *EXTRA]
+if BACKEND == "unsloth":
+    SETS.append("model.name=unsloth/Qwen3.5-4B")
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "unsloth", "unsloth_zoo"], check=True)
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+v = tuple(int(x) for x in torch.__version__.split("+")[0].split(".")[:2])
+assert v >= (2, 6), f"torch {torch.__version__} < 2.6"
+assert torch.cuda.device_count() == 2, "select accelerator GPU T4 x2"
+print(HF_USER, torch.__version__, [torch.cuda.get_device_name(i) for i in range(2)])
+print("SETS:", SETS)
+"""),
+            DISK,
+            code("""
+if MODE == "smoke":
+    !python scripts/kaggle_smoke.py --config configs/kaggle_t4x2.yaml --nproc 2         --set {" ".join(SETS)} --smoke-repo hub:{HF_USER}/benvqa-smoke         --hours-planned {HOURS_PLANNED} --out /kaggle/working/reports/m5b_smoke.json         2>&1 | tee /kaggle/working/smoke_stdout.log
+"""),
+            code("""
+if MODE == "train":
+    decay = "--decay-now" if DECAY_NOW else ""
+    !torchrun --nproc_per_node 2 -m benvqa.train --config configs/kaggle_t4x2.yaml {decay}         --set {" ".join(SETS)} 2>&1 | tee -a /kaggle/working/train_stdout.log
+"""),
+            code("""
+if MODE == "eval":
+    from huggingface_hub import snapshot_download
+    try:  # earlier runs (e.g. zero-shot a,b) so bench_results.md lists all of them
+        snapshot_download(f"{HF_USER}/qwen35-4b-benvqa-lora", allow_patterns=["reports/*"],
+                          local_dir="/kaggle/working")
+    except Exception as exc:
+        print("no earlier reports:", exc)
+    caps = CAPTIONS if any(r in EVAL_RUNS for r in "cde") else 0
+    !torchrun --nproc_per_node 2 -m benvqa.eval_bench --config configs/kaggle_t4x2.yaml         --set {" ".join(SETS)} --runs {EVAL_RUNS} --captions {caps}         --out /kaggle/working/reports 2>&1 | tee /kaggle/working/eval_stdout.log
+    from huggingface_hub import HfApi
+    HfApi().create_repo(f"{HF_USER}/qwen35-4b-benvqa-lora", private=True, exist_ok=True)
+    HfApi().upload_folder(folder_path="/kaggle/working/reports", path_in_repo="reports",
+                          repo_id=f"{HF_USER}/qwen35-4b-benvqa-lora", repo_type="model")
+"""),
+            code("""
+# Progress at a glance (also on the Hub: <user>/qwen35-4b-benvqa-lora/train_log.jsonl)
+import json, pathlib
+log = pathlib.Path("/kaggle/working/train_log.jsonl")
+if log.exists():
+    rows = [json.loads(l) for l in log.read_text().splitlines()]
+    for r in [r for r in rows if "loss" in r][-5:] + [r for r in rows if "val" in r][-3:]:
+        print({k: r[k] for k in ("step", "loss", "lr", "conversations_per_s", "data_wait_frac",
+                                  "conversations_seen", "eta_hours", "val") if k in r})
+for f in ("reports/m5b_smoke.json", "reports/bench_results.md"):
+    p = pathlib.Path("/kaggle/working") / f
+    if p.exists():
+        print(p.read_text()[:6000])
+"""),
+        ],
+        gpu=True,
+    )
+
+
 def main() -> None:
     OUT.mkdir(exist_ok=True)
-    for name, nb in {"kaggle_build_shards.ipynb": build_notebook()}.items():
+    notebooks = {"kaggle_build_shards.ipynb": build_notebook(),
+                 "kaggle_train.ipynb": train_notebook()}  # fmt: skip
+    for name, nb in notebooks.items():
         (OUT / name).write_text(json.dumps(nb, indent=1) + "\n", encoding="utf-8")
         print("wrote", OUT / name)
 

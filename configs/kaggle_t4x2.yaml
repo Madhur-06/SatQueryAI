@@ -3,9 +3,11 @@
 # line: data.hub_dataset=hub:me/benvqa-shards checkpoint.hub_repo=hub:me/qwen35-4b-benvqa-lora).
 seed: 1234
 model:
-  name: unsloth/Qwen3.5-4B
+  name: Qwen/Qwen3.5-4B          # unsloth/Qwen3.5-4B with backend: unsloth
   tokenizer: Qwen/Qwen3.5-4B      # always the official tokenizer/processor
-  backend: unsloth                # fallback: hf (transformers + PEFT + plain DDP)
+  backend: hf                     # verified path (transformers + PEFT + DDP). unsloth is
+                                  # opt-in until the M5b smoke test shows it works under DDP
+                                  # on T4 (it cannot be tested on Windows)
   dtype: float16                  # Turing: no bf16, no FlashAttention-2
   gradient_checkpointing: true
   attn_implementation: sdpa
@@ -29,6 +31,7 @@ train:
   max_grad_norm: 1.0
   max_len: 1024
   pool_size: 64
+  pad_to_multiple: 64             # bounded set of Triton kernel shapes (see collate.py)
 data:
   hub_dataset: hub:<HF_USER>/benvqa-shards
   num_workers: 2

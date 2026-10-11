@@ -375,9 +375,22 @@ class FakeTokenizer:
         self.pad_token_id = 0
         self._split = re.compile("(" + "|".join(re.escape(s) for s in self.SPECIALS) + ")")
         self._words = re.compile(r"\w+|[^\w\s]|\s+")
+        self._pieces: dict[int, str] = {}
 
     def _id(self, piece: str) -> int:
-        return 1000 + _seed(piece) % (self.vocab_size - 1000)
+        i = 1000 + _seed(piece) % (self.vocab_size - 1000)
+        self._pieces.setdefault(i, piece)
+        return i
+
+    def decode(self, ids: list[int], skip_special_tokens: bool = False) -> str:
+        out = []
+        for i in ids:
+            if i < len(self.SPECIALS):
+                if not skip_special_tokens:
+                    out.append(self.SPECIALS[i])
+            else:
+                out.append(self._pieces.get(i, f"<{i}>"))
+        return "".join(out)
 
     def __call__(self, text: str, add_special_tokens: bool = False) -> dict[str, list[int]]:
         ids: list[int] = []
@@ -393,3 +406,58 @@ class FakeTokenizer:
 
     def __setstate__(self, state: dict) -> None:
         self.__init__(state["vocab_size"])
+
+
+def write_tiny_model(path: Path, seed: int = 0) -> Path:
+    """A randomly initialised, tiny Qwen3.5 VLM (same architecture: GatedDeltaNet + full
+    attention, vision tower, M-RoPE, tied embeddings) whose special token ids match
+    ``FakeTokenizer``. Trainer tests run on CPU in seconds with it."""
+    import torch
+    from transformers import AutoModelForImageTextToText
+    from transformers.models.qwen3_5 import Qwen3_5Config
+
+    torch.manual_seed(seed)
+    tok = FakeTokenizer()
+    cfg = Qwen3_5Config(
+        text_config={
+            "vocab_size": tok.vocab_size,
+            "hidden_size": 64,
+            "intermediate_size": 128,
+            "num_hidden_layers": 4,
+            "num_attention_heads": 2,
+            "num_key_value_heads": 1,
+            "head_dim": 32,
+            "linear_key_head_dim": 16,
+            "linear_value_head_dim": 16,
+            "linear_num_key_heads": 2,
+            "linear_num_value_heads": 4,
+            "layer_types": ["linear_attention"] * 3 + ["full_attention"],
+            "tie_word_embeddings": True,
+            "max_position_embeddings": 4096,
+            "rope_parameters": {
+                "rope_type": "default",
+                "rope_theta": 10000.0,
+                "partial_rotary_factor": 0.25,
+                "mrope_section": [2, 1, 1],
+                "mrope_interleaved": True,
+            },
+            "pad_token_id": 0,
+            "eos_token_id": 0,
+        },
+        vision_config={
+            "depth": 2,
+            "hidden_size": 32,
+            "intermediate_size": 64,
+            "num_heads": 2,
+            "out_hidden_size": 64,
+            "num_position_embeddings": 2304,
+        },
+        image_token_id=FakeTokenizer.SPECIALS.index("<|image_pad|>"),
+        video_token_id=999,
+        vision_start_token_id=FakeTokenizer.SPECIALS.index("<|vision_start|>"),
+        vision_end_token_id=FakeTokenizer.SPECIALS.index("<|vision_end|>"),
+        tie_word_embeddings=True,
+    )
+    model = AutoModelForImageTextToText.from_config(cfg)
+    model.save_pretrained(path)
+    return path

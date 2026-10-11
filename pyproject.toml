@@ -84,6 +84,9 @@ ignore = [
     "N806", # same for local variables
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"scripts/make_notebooks.py" = ["E501"]  # notebook markdown/code text inside strings
+
 [tool.ruff.lint.isort]
 known-first-party = ["satquery", "benvqa"]
 

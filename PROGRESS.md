@@ -232,6 +232,50 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
   - non-train data rejected.
 - Throughput on real dev shards (`reports/throughput_loader.json`): **472 conversations/s** with 2 workers (2,785 QAs/s), 0.95% padding, 5.89 QAs and 576 tokens per conversation. Per-conversation CPU cost is 4.6 ms, mostly composites + resize + patchify. That is ~300× what one rank needs.
 
+### M5: Trainer + Kaggle packaging (2026-10-11): ready for the Kaggle M5b smoke run
+- `benvqa.train` (`torchrun -m benvqa.train`):
+  - DDP (nccl/gloo), fp16 autocast + GradScaler, LoRA weights in fp32;
+  - global turn-weight normaliser (one all-reduce per step);
+  - label-position-only LM head (`model/loss.py`);
+  - WSD schedule (`schedule.py`, `--decay-now`);
+  - rank-0 control broadcast (checkpoint / eval / stop);
+  - NaN guard (skip; after 3 in a row reload + halve lr); session guard (`SESSION_START_EPOCH`, SIGTERM);
+  - JSONL log (+ W&B); in-training score-based val eval; `best/` adapter.
+- `benvqa.checkpoint`:
+  - atomic writes (tmp + fsync + rename) and atomic `LATEST`; keeps 2 locally and 3 on the Hub;
+  - async Hub mirror: busy uploader → stays local, and `finalize` uploads the newest;
+  - in-flight folders are never pruned; resumes from the mirror on a fresh machine.
+- `benvqa.model.load`:
+  - `hf` backend (transformers + PEFT, verified);
+  - `unsloth` backend written to the documented API (unverified; Windows);
+  - on CPU, transformers' bindings to the GPU-only fla kernels are swapped back to torch.
+- `benvqa.evaluation` + `benvqa.eval_bench`:
+  - single-turn score-based VQA with softmax confidence; paper-style per-category table;
+  - greedy captions (BLEU-4/METEOR/ROUGE-L/CIDEr; ROUGE-L added to `satquery.eval.metrics.caption`);
+  - reliability diagram SVG (validated palette, light/dark);
+  - runs a–e → `reports/bench_results.md`.
+- Tests (CPU, tiny random Qwen3.5 with the real architecture): 25 in `test_train.py`, including:
+  - label-position loss == full-logits loss; right-padding invariance; WSD shape;
+  - checkpoint rotation + mirror resume; busy uploader;
+  - **hard kill (os._exit) → resume gives identical per-step losses, lr, cursors, counters and final adapter**;
+  - resume from the mirror with local checkpoints deleted; **2-process DDP**; eval_bench a + c.
+- Real Qwen3.5-0.8B on RTX 4060 (`reports/smoke_qwen35-08b_checks.json`):
+  - label-position loss == reference (diff 0.0); right padding 1e-4 relative;
+  - fp16 vs fp32 loss diff 0.03, all finite;
+  - 20-step run hard-killed at step 12, resumed from step 10: step 11 loss identical (0.6710);
+  - loss 0.91 → 0.40, val mean OA 41.7 → 63.8 (64 questions).
+- Fast kernels (`reports/kernel_check.json`): fla/Triton is 1.84× faster fwd+bwd than the torch fallback (loss diff 0.003, grad cosine 0.99991). Tested locally via triton-windows + fla-core, installed into the venv outside the lockfile.
+- Bugs found and fixed:
+  - `from_pretrained` returns eval mode, which silently disabled gradient checkpointing (7.8 vs 3.6 GB peak);
+  - Triton recompiles per sequence length (new `train.pad_to_multiple: 64`; 1.35 s → 0.65 s per micro-batch);
+  - `LocalMirror.list` prefix semantics; Windows fsync; DDP test harness pipes.
+- Kaggle: `requirements-kaggle.txt` (pinned), `notebooks/kaggle_train.ipynb` (MODE smoke/train/eval), `scripts/kaggle_smoke.py` (M5b: env, micro-batch sweep, Hub round trip, recommended `planned_images`, tested locally), `docs/kaggle_runbook.md`.
+
+## Next (Phase 2.1)
+1. Build shards on Kaggle (CPU notebook). Needs your HF token; ~30 GB Hub dataset.
+2. M5b `MODE=smoke` on 2×T4: fla on Turing? 4B memory/throughput, micro-batch, `planned_images`. Optionally try `BACKEND=unsloth`.
+3. M6 `MODE=eval` runs a,b; M7 `MODE=train` sessions; M8 eval runs c,d,e + captions.
+
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
 - [x] All four input configurations work end-to-end on synthetic data with a clean trace (e2e API tests).

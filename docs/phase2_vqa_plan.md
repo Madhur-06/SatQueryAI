@@ -154,3 +154,13 @@ tested here and is the fallback.
 - Quantization verified: S2 has no BOA offset, S1 is already in dB (see `quantize.py`).
 - Workers ship uint8 patch tiles; normalisation and temporal duplication happen on the GPU
   (`vision.to_pixel_values`). Tested bit-exact against the official processor.
+- `model.backend` defaults to **`hf`** in `configs/kaggle_t4x2.yaml` (brief: `unsloth`).
+  Unsloth can't run on Windows, so it is unverified. It is one switch away
+  (`BACKEND = "unsloth"` in the notebook) and should be adopted only if the M5b smoke run
+  shows it works under DDP on T4 and is faster.
+- Weights `Qwen/Qwen3.5-4B` for the `hf` backend (the `unsloth/` repo has a different
+  config/tokenizer); the tokenizer is always the official one.
+- New `train.pad_to_multiple: 64`: the fla Triton kernels compile and autotune per sequence
+  length. Without bucketing, most steps paid a recompile (2x slower) and the allocator grew.
+- Unsloth's documented vision example uses `modules_to_save=["lm_head","embed_tokens"]`.
+  We don't, as the brief requires (tied, 636 M params).

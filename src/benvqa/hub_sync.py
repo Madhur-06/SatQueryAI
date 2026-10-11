@@ -103,16 +103,13 @@ class LocalMirror:
         return dst
 
     def list(self, prefix: str = "") -> list[str]:
-        base = self.root / prefix
-        if base.is_file():
-            return [prefix]
+        """Repo paths starting with ``prefix`` (string prefix, like the Hub listing)."""
+        top = prefix.rsplit("/", 1)[0] if "/" in prefix else ""
+        base = self.root / top
         if not base.exists():
             return []
-        return sorted(
-            p.relative_to(self.root).as_posix()
-            for p in base.rglob("*")
-            if p.is_file() and not p.name.endswith(".uploading")
-        )
+        files = (p.relative_to(self.root).as_posix() for p in base.rglob("*") if p.is_file())
+        return sorted(f for f in files if f.startswith(prefix) and not f.endswith(".uploading"))
 
     def delete(self, paths: Iterable[str], message: str) -> None:
         for rel in paths:

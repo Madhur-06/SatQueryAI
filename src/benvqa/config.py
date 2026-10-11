@@ -80,12 +80,16 @@ class TrainCfg(Strict):
     planned_images: int = 160_000
     max_grad_norm: float = 1.0
     max_len: int = 1024
+    pad_to_multiple: int = 64
+    """Pad each micro-batch's length to a multiple (bounded set of kernel shapes, see collate)."""
     pool_size: int = 64
     """Length-bucketing pool (conversations); must be a multiple of ``micro_batch``."""
     nan_patience: int = 3
     max_steps: int | None = None
     """Hard stop (smoke tests); None = run until the session guard or planned images."""
     log_every: int = 10
+    ddp_static_graph: bool = False
+    """Set if Unsloth's (reentrant) gradient checkpointing trips DDP's ready-twice check."""
 
 
 class DataCfg(Strict):
@@ -138,6 +142,15 @@ class Config(Strict):
 
     @model_validator(mode="after")
     def _check(self) -> Config:
+        for name, value in (
+            ("data.hub_dataset", self.data.hub_dataset),
+            ("checkpoint.hub_repo", self.checkpoint.hub_repo or ""),
+        ):
+            if "<HF_USER>" in value:
+                raise ValueError(
+                    f"{name} still contains <HF_USER>: override it, e.g. "
+                    f"--set {name}={value.replace('<HF_USER>', 'yourname')}"
+                )
         if self.train.pool_size % self.train.micro_batch:
             raise ValueError("train.pool_size must be a multiple of train.micro_batch")
         self.conversation_config()  # validates probabilities / modality sets

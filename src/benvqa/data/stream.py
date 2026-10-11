@@ -382,7 +382,11 @@ class TrainStream(tud.IterableDataset):
                                 "rank": self.rank,
                             }
                             yield collate(
-                                items, self.renderer.pad_id, self.renderer.image_pad, meta
+                                items,
+                                self.renderer.pad_id,
+                                self.renderer.image_pad,
+                                meta,
+                                cfg.train.pad_to_multiple,
                             )
                             counter += 1
                         bi = 0

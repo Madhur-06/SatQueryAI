@@ -37,11 +37,23 @@ class Item:
     patch_id: str = ""
 
 
-def collate(items: list[Item], pad_id: int, image_pad_id: int, meta: dict[str, Any]) -> dict:
+def padded_length(n: int, multiple: int) -> int:
+    """Round up to a multiple: the fla/Triton kernels compile and autotune once per sequence
+    length, so free-running lengths cost a recompile (and allocator growth) on most steps."""
+    return -(-n // multiple) * multiple if multiple > 1 else n
+
+
+def collate(
+    items: list[Item],
+    pad_id: int,
+    image_pad_id: int,
+    meta: dict[str, Any],
+    pad_to_multiple: int = 1,
+) -> dict:
     import torch
 
     B = len(items)
-    L = max(len(it.rendered) for it in items)
+    L = padded_length(max(len(it.rendered) for it in items), pad_to_multiple)
     input_ids = np.full((B, L), pad_id, dtype=np.int64)
     attention = np.zeros((B, L), dtype=np.int64)
     label_pos, label_ids, label_turn = [], [], []

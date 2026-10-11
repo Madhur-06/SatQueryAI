@@ -1,0 +1,31 @@
+# Kaggle training/eval environment for benvqa (Phase 2.1). Install with:
+#   pip install -q -r requirements-kaggle.txt
+# torch comes from the Kaggle image (CUDA build; needs >= 2.6, checked by the notebook).
+# Pins = versions that passed the local smoke test (2026-10-11, Qwen3.5-0.8B, RTX 4060):
+# loss equivalence, fp16 stability, right-padding invariance, kill -> exact resume.
+# Re-pin after the Kaggle M5b smoke test if anything changes there.
+transformers==5.17.0
+tokenizers==0.23.2
+peft==0.21.2
+accelerate==1.15.0
+huggingface_hub==1.33.0
+hf_xet
+safetensors==0.8.0
+pydantic>=2.7
+pyyaml>=6
+httpx>=0.27
+pyarrow>=17
+zstandard==0.25.0
+tifffile>=2024.8
+pillow>=10.4
+# Fast GatedDeltaNet kernels (Triton). Without them transformers falls back to a pure-torch
+# path that is ~1.8x slower end to end (reports/kernel_check.json). causal-conv1d is left
+# out: it needs a CUDA build and its torch fallback costs ~2% of a step.
+flash-linear-attention==0.5.2
+fla-core==0.5.2
+einops
+# Captioning metrics (BLEU/METEOR/ROUGE-L/CIDEr) for eval_bench.
+pycocoevalcap>=1.2
+# Optional backend (model.backend=unsloth): installed by the notebook only when selected,
+# because it may pull its own transformers version. Verify in the M5b smoke test.
+#   unsloth unsloth_zoo

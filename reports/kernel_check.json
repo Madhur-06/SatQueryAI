@@ -1,0 +1,22 @@
+{
+ "installed": {
+  "fla": true,
+  "causal_conv1d": false,
+  "triton": true
+ },
+ "model": "Qwen/Qwen3.5-0.8B",
+ "tokens": 1097,
+ "conversations": 2,
+ "fwd_bwd_s": {
+  "fast": 0.548,
+  "torch": 1.006,
+  "speedup": 1.84
+ },
+ "loss": {
+  "fast": 0.87157142162323,
+  "torch": 0.8744587302207947,
+  "abs_diff": 0.0028873085975646973
+ },
+ "grad_cosine": 0.999912679195404,
+ "grad_rel_norm_diff": 0.014002399519085884
+}
