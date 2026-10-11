@@ -146,3 +146,11 @@ tested here and is the fallback.
   showed 21% of train images have only the adjacency `no` binary; renormalising would
   make adjacency binaries ~2:1 `no`.
 - Test split has 115,753 images (the brief's 116,835 included the 1,082 bench images).
+- Zenodo download: one stream was planned → a **parallel range reader** (16–32
+  connections). Zenodo caps each connection at about 0.4 MB/s (measured), so a single stream
+  would take more than 3 days.
+- Shard size: ~130 MB per 1,000 images (the brief said 100–120 MB), ~30 GB total (the brief
+  said 25–30 GB). The uint8 bands are noisy and compress to ~130 KB per image even at zstd 9.
+- Quantization verified: S2 has no BOA offset, S1 is already in dB (see `quantize.py`).
+- Workers ship uint8 patch tiles; normalisation and temporal duplication happen on the GPU
+  (`vision.to_pixel_values`). Tested bit-exact against the official processor.

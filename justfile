@@ -67,3 +67,15 @@ dev-ui:
 # Write synthetic demo GeoTIFFs to data/demo
 demo-data:
     uv run python -m satquery.testing.demo data/demo
+
+# Phase 2.1 (benvqa): extras for the data pipeline + LoRA training on top of install-gpu
+install-benvqa:
+    uv sync --extra eval --extra ml --extra cuda --extra benvqa --extra train
+
+# Zip committed benvqa code for a Kaggle Dataset ("benvqa-code")
+kaggle-code:
+    uv run --no-sync python scripts/package_code.py
+
+# Regenerate notebooks/kaggle_*.ipynb from scripts/make_notebooks.py
+notebooks:
+    uv run --no-sync python scripts/make_notebooks.py
