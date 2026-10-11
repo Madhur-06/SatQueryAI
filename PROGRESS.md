@@ -155,6 +155,16 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
 - Verified the dataset, Zenodo, model and template facts against primary sources; written up in the plan.
 - New facts: the model needs `mm_token_type_ids`; MTP weights are not even loaded by transformers; the `unsloth/` repo ships a different tokenizer; S1 tiles look like dB already.
 
+### M1: Dataset analysis (2026-10-11)
+- `scripts/analyze_dataset.py` → `reports/dataset_analysis.{md,json}` (74 s on CPU, parquet only).
+- Every row count in the brief reproduces exactly. No image is shared between any two splits (S2 or S1 names).
+- MCQ parser (`benvqa.data.mcq`) round-trips 100% of 3,259,184 MCQs. All have 4 options; 39% have commas inside options.
+- Differences from the brief:
+  - test has 115,753 images (116,835 = test + bench);
+  - adjacency `yes`/MCQ exist for 79% of train images, while the adjacency `no` binary exists for all. Group picks are therefore absolute probabilities, and an unavailable pick skips the group;
+  - bench has a different per-image structure (many questions per category).
+- Projection: about 5.75 QAs per conversation, 590 tokens vs 322 single-turn → 3.1× answers per token.
+
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
 - [x] All four input configurations work end-to-end on synthetic data with a clean trace (e2e API tests).

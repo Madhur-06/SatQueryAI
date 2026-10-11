@@ -39,6 +39,18 @@ cuda = [
     "torch>=2.4",
     "torchvision>=0.19",
 ]
+benvqa = [
+    "httpx>=0.27",
+    "huggingface-hub>=1.0",
+    "pandas>=2.2",
+    "pyarrow>=17",
+    "pyyaml>=6",
+    "tifffile>=2024.8",
+    "zstandard>=0.23",
+]
+train = [
+    "peft>=0.17",
+]
 
 [project.scripts]
 satquery-eval = "satquery.eval.cli:main"
@@ -57,7 +69,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/satquery"]
+packages = ["src/satquery", "src/benvqa"]
 
 [tool.ruff]
 line-length = 100
@@ -73,7 +85,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["satquery"]
+known-first-party = ["satquery", "benvqa"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

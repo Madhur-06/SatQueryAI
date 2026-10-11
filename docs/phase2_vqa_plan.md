@@ -141,3 +141,8 @@ tested here and is the fallback.
 - `requests` → `httpx` for streaming: already a dependency, same semantics (design 2).
 - The data cursor is counted in micro-batches rather than samples: needed for exact
   resume with length bucketing (design 4). Same guarantee as the brief.
+- Group pick probabilities are absolute (binary-yes / binary-no / MCQ = 0.25 / 0.25 / 0.5); an
+  unavailable item means the group is skipped for that visit instead of renormalising. M1
+  showed 21% of train images have only the adjacency `no` binary; renormalising would
+  make adjacency binaries ~2:1 `no`.
+- Test split has 115,753 images (the brief's 116,835 included the 1,082 bench images).
