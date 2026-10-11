@@ -12,7 +12,7 @@ dist/
 htmlcov/
 
 # Runtime data (uploads, outputs, downloaded benchmarks, weights)
-data/
+/data/
 /datasets/
 *.safetensors
 *.ckpt
