@@ -271,10 +271,22 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
   - `LocalMirror.list` prefix semantics; Windows fsync; DDP test harness pipes.
 - Kaggle: `requirements-kaggle.txt` (pinned), `notebooks/kaggle_train.ipynb` (MODE smoke/train/eval), `scripts/kaggle_smoke.py` (M5b: env, micro-batch sweep, Hub round trip, recommended `planned_images`, tested locally), `docs/kaggle_runbook.md`.
 
+### M5b: Kaggle smoke on 2×T4 (2026-10-24): sweep passed, round trip found a resume bug (fixed)
+- Env: Python 3.13, torch 2.11+cu128. `fla` imports and runs on Turing; `causal_conv1d` absent (torch fallback, ~2%).
+- Sweep (32 conversations/step, 12 steps each, training read from the Hub shards): every setting exited 0, no OOM, finite loss (0.74–0.76 → 0.56–0.65), `data_wait_frac` ≤ 0.004.
+  - mb 1 / 2 / 4: 0.704 / 0.738 / 0.753 conversations/s, peak 10.28 / 11.17 / 12.89 GB, ~43–45 s per step. GPU-bound: micro-batch barely matters.
+  - The first step of a fresh session takes ~330 s (Triton compilation).
+  - 45 h at 0.75 conv/s → `planned_images` ≈ 122k (about half the 229k selected train images).
+  - The script recommends mb 4, but mb 2 is only 2% slower with 1.7 GB more headroom. The sweep only saw ~384 conversations of ~576 tokens, while `max_len` is 1024; a rough extrapolation puts a long mb 4 batch near the T4's 15 GB. Prefer `train.micro_batch=2 train.grad_accum=8`.
+- **Bug (fixed): resume from a `hub:` dataset always failed with `data_hash mismatch`.** The first run resolves `data.revision` (Hub head) and saves it in the hash; the resumed config has no revision, and `_check_compatible` ran before the saved revision was restored. Tests used `local:` mirrors, where the revision stays `None`, so they never saw it. Every session after the first would have crashed at startup.
+  - Fix: `Trainer` restores the saved revision (when none is given) before the check; an explicit different revision still fails the check.
+  - Test: `test_resume_restores_data_revision` pins a revision on the first run (stand-in for the Hub lookup), resumes without it, and checks that a different explicit revision is rejected. It failed with the Kaggle error before the fix.
+  - The first round-trip run also died after 28 s, before it could have saved anything, so `benvqa-smoke` most likely held a checkpoint from an earlier attempt. Delete that repo (or its `ckpt/`) before re-running the round trip.
+
 ## Next (Phase 2.1)
-1. Build shards on Kaggle (CPU notebook). Needs your HF token; ~30 GB Hub dataset.
-2. M5b `MODE=smoke` on 2×T4: fla on Turing? 4B memory/throughput, micro-batch, `planned_images`. Optionally try `BACKEND=unsloth`.
-3. M6 `MODE=eval` runs a,b; M7 `MODE=train` sessions; M8 eval runs c,d,e + captions.
+1. Re-run only the M5b Hub round trip (after clearing `benvqa-smoke`) and check `resumed_from_hub: true`.
+2. M6 `MODE=eval` runs a,b; M7 `MODE=train` sessions with `EXTRA = ["train.micro_batch=2", "train.grad_accum=8", "train.planned_images=<from HOURS_PLANNED>"]`; M8 eval runs c,d,e + captions.
+3. Optionally try `BACKEND=unsloth` in a second smoke run.
 
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.

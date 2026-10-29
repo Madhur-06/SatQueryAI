@@ -178,9 +178,12 @@ class Trainer:
         state = self._find_resume()
         self.state: dict[str, Any] = state["state"] if state else {}
         if state:
+            # Restore the dataset revision first: the saved data_hash includes the revision
+            # the first run resolved, while a resumed config usually has none. An explicit,
+            # different revision is a data change and fails the check below.
+            if cfg.data.revision is None:
+                cfg.data.revision = self.state.get("data_revision")
             self._check_compatible(self.state)
-            if self.state.get("data_revision"):
-                cfg.data.revision = self.state["data_revision"]
         elif cfg.data.hub_dataset.startswith("hub:") and cfg.data.revision is None and d.main:
             cfg.data.revision = HubMirror(cfg.data.hub_dataset[4:]).head_revision()
         cfg.data.revision = d.broadcast_obj(cfg.data.revision)

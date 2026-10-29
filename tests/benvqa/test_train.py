@@ -341,6 +341,23 @@ def test_resume_from_mirror_on_fresh_machine(env: dict[str, Path], tmp_path: Pat
     assert sorted(_log(run)) == [1, 2, 3, 4, 5, 6]  # the log came back from the mirror too
 
 
+def test_resume_restores_data_revision(env: dict[str, Path], tmp_path: Path) -> None:
+    """A hub: dataset resolves ``data.revision`` on the first run and saves it, while the
+    config of the resumed run has none (Kaggle M5b round trip). A local mirror ignores the
+    revision, so pinning it on the first run stands in for the Hub head lookup."""
+    run = tmp_path / "rev"
+    first = _run(env, run, "data.revision=0123abcd", steps=4)
+    assert first.returncode == 0, first.stderr[-3000:]
+    r = _run(env, run, steps=6)
+    assert r.returncode == 0, r.stderr[-3000:]
+    assert "resumed from step 4" in r.stderr
+    state = CheckpointManager.load(run / "ckpt/step-000006")["state"]
+    assert state["data_revision"] == "0123abcd"
+    changed = _run(env, run, "data.revision=fedcba98", steps=8)  # explicit other revision
+    assert changed.returncode != 0
+    assert "data_hash mismatch" in changed.stderr
+
+
 def test_ddp_two_processes(env: dict[str, Path], tmp_path: Path) -> None:
     run = tmp_path / "ddp"
     r = _run(env, run, nproc=2, steps=4)
