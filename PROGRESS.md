@@ -282,11 +282,62 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
   - Fix: `Trainer` restores the saved revision (when none is given) before the check; an explicit different revision still fails the check.
   - Test: `test_resume_restores_data_revision` pins a revision on the first run (stand-in for the Hub lookup), resumes without it, and checks that a different explicit revision is rejected. It failed with the Kaggle error before the fix.
   - The first round-trip run also died after 28 s, before it could have saved anything, so `benvqa-smoke` most likely held a checkpoint from an earlier attempt. Delete that repo (or its `ckpt/`) before re-running the round trip.
+- **Re-run with the fix (2026-10-29): M5b passed.** `reports/m5b_smoke.json`.
+  - Hub round trip: both runs exit 0, `resumed_from_hub: true` (local checkpoints deleted, resumed from the Hub).
+  - Sweep reproduces the first run: mb 1 / 2 / 4 at 0.717 / 0.747 / 0.759 conversations/s, the same peak memory, and bit-identical first-step losses (deterministic data order and seeding across sessions); last-step losses differ by ~1e-3 (GPU kernel nondeterminism).
+  - Training settings: mb 2 → 0.747 conv/s × 45 h ≈ 121k conversations, i.e. `train.micro_batch=2 train.grad_accum=8 train.planned_images=121014`.
+
+### M6: Zero-shot bench baselines on 2×T4 (2026-10-29)
+- `MODE=eval`, runs a,b on the full bench split (12,477 VQA questions, ~1.5 h, commit `0c01eb2`). Reports were uploaded to `reports/` in the `<HF_USER>/qwen35-4b-benvqa-lora` Hub repo. The M8 eval downloads them again, so its `bench_results.md` lists a–e together.
+
+  | Model | Binary OA | MCQ OA |
+  |---|---|---|
+  | (a) Qwen3.5-4B zero-shot, RGB | **59.33** | **37.35** |
+  | (b) Qwen3.5-4B zero-shot, RGB + NIR-SWIR + SAR | 57.98 | 35.80 |
+  | Qwen3-VL-8B zero-shot (paper, best open model) | 61.96 | 37.55 |
+  | GPT-5.2 zero-shot (paper) | 60.39 | 34.93 |
+  | RS-InternVL fine-tuned (paper) | 73.29 | 51.49 |
+  | Trivial (always "yes" / most common letter) | 48.0 | 25.7 |
+
+- Yes-bias: the model answers "yes" to 71% of binary questions, against 48% in the gold answers. It gets 82% of "yes" questions right but only 39% of "no" questions.
+- The extra composites hurt the untrained model (b < a, and "yes" rises to 75%). The key fine-tuned comparison is (c) against (a).
+- MCQ count (27.1) and S (25.1) are at chance (~25).
+- Overconfident: ECE ≈ 0.12, and answers given with >95% confidence are right 76% of the time. Calibrate on val before showing confidence in the app (Phase 3).
+
+### M7: LoRA training on Kaggle 2×T4 (2026-10-30 →): sessions 1–4 done, 3,477 / 3,782 steps
+- Settings for every session: `MODE="train"`, `DECAY_NOW=False`, `EXTRA = ["train.micro_batch=2", "train.grad_accum=8", "train.planned_images=121014"]` (3,782 steps × 32 conversations; WSD decay over the last 567 steps, starting at step 3,215).
+- Every session resumed from the Hub checkpoint of the one before. Every session also had 0 skipped steps, no data wait and peak memory ≤ 11.57 GB, and ended on the session time guard after ~11.1 h, followed by val, checkpoint and upload. Grad-norm was NaN only in GradScaler overflow windows early in session 1 (steps 10, 60, 240); the loss scale went 512 → 128 → 256.
+
+  | Session | Dates | Steps | conv/s | Loss (end) | lr (end) |
+  |---|---|---|---|---|---|
+  | 1 | 10-30 | 0 → 911 | 0.73 | ~0.18 | 1e-4 |
+  | 2 | 10-31 | 911 → 1,753 | 0.68 | ~0.16 | 1e-4 |
+  | 3 | 10-31 → 11-01 | 1,753 → 2,624 | 0.71 | ~0.14 | 1e-4 |
+  | 4 | 11-01 | 2,624 → 3,477 | 0.69 | ~0.13 | 5.4e-5 (decaying) |
+
+- Throughput varies by ~7% between Kaggle machines, so a session covers 840–910 steps instead of the planned ~910. Session 5 needs ~305 steps (~4.5 h) and should stop with `planned images reached`.
+- In-training val (2,000 val_small questions; in-distribution, not comparable to the bench numbers):
+
+  | Step | Binary | MCQ | Mean |
+  |---|---|---|---|
+  | 911 | 83.23 | 81.61 | 82.42 |
+  | 1000 | 81.89 | 82.13 | 82.01 |
+  | 1753 | 83.98 | 84.61 | 84.30 |
+  | 2000 | 85.33 | 84.31 | 84.82 |
+  | 2624 | 84.73 | 85.29 | 85.01 |
+  | **3000** | 84.13 | **86.56** | **85.35** (`best/`) |
+  | 3477 | 83.68 | 86.41 | 85.05 |
+
+  - Train accuracy tracks val, so there is no sign of overfitting.
+  - MCQ keeps improving (area 68 → 75–78, season 72 → 96, climate zone 92 → 96). MCQ adjacency (~75) is the weakest category.
+  - Binary OA has fallen at each val since step 2000 (85.33 → 83.68), mostly presence at step 3,477. It's within noise for 167 questions per category, but watch it at step 3,782 and on the bench.
+- Kaggle gotcha: the notebook viewer shows the output of the last *successful* version. Pick the newest version in the version list before downloading, or you get an older session's logs.
 
 ## Next (Phase 2.1)
-1. Re-run only the M5b Hub round trip (after clearing `benvqa-smoke`) and check `resumed_from_hub: true`.
-2. M6 `MODE=eval` runs a,b; M7 `MODE=train` sessions with `EXTRA = ["train.micro_batch=2", "train.grad_accum=8", "train.planned_images=<from HOURS_PLANNED>"]`; M8 eval runs c,d,e + captions.
-3. Optionally try `BACKEND=unsloth` in a second smoke run.
+1. M7 session 5 (~4.5 h, same settings): expect `resumed from step 3477`, then `stopping: planned images reached` with a final val at step 3,782.
+2. M8 eval: `MODE="eval"`, `EVAL_RUNS="c,d,e"`, `CAPTIONS=200` (loads `ckpt/best`). Save outputs under `reports/`, not `results/`, which holds the Phase 1 baselines.
+3. Phase 3: register the adapter as a `benvqa_lora` tool, with confidence calibrated on val.
+4. Optionally try `BACKEND=unsloth` in a second smoke run.
 
 ## Definition of done: status
 - [x] `just test` passes on CPU-only (no torch); `just serve` starts API + UI.
@@ -328,4 +379,5 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
 - Lee filter only. Refined Lee is a TODO.
 - Decided: built-up needs SWIR (NDBI), so 4-band inputs get a structured `band_role_missing` error.
 - Decided: CVA uses robust linear radiometric normalisation by default; histogram matching invents change (see M3).
+- **`--decay-now` (`DECAY_NOW=True`) wastes the rest of the session.** It decays over min(15% of planned steps, steps that fit in the session) and then trains at lr 0 (`min_lr_ratio: 0`) until the time guard. With 567 decay steps against ~880 that fit, that's ~4 h at lr 0. Not used in M7. Fix: decay over the whole session, or stop once lr reaches 0.
 - Old pip `venv/` in the repo root is unused (uv uses `.venv/`); it's git-ignored and safe to delete.
