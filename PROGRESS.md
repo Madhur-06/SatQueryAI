@@ -304,7 +304,7 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
 - MCQ count (27.1) and S (25.1) are at chance (~25).
 - Overconfident: ECE ≈ 0.12, and answers given with >95% confidence are right 76% of the time. Calibrate on val before showing confidence in the app (Phase 3).
 
-### M7: LoRA training on Kaggle 2×T4 (2026-10-30 →): sessions 1–4 done, 3,477 / 3,782 steps
+### M7: LoRA training on Kaggle 2×T4 (2026-10-30 → 2026-11-01): done, 5 sessions, 3,783 steps
 - Settings for every session: `MODE="train"`, `DECAY_NOW=False`, `EXTRA = ["train.micro_batch=2", "train.grad_accum=8", "train.planned_images=121014"]` (3,782 steps × 32 conversations; WSD decay over the last 567 steps, starting at step 3,215).
 - Every session resumed from the Hub checkpoint of the one before. Every session also had 0 skipped steps, no data wait and peak memory ≤ 11.57 GB, and ended on the session time guard after ~11.1 h, followed by val, checkpoint and upload. Grad-norm was NaN only in GradScaler overflow windows early in session 1 (steps 10, 60, 240); the loss scale went 512 → 128 → 256.
 
@@ -314,8 +314,9 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
   | 2 | 10-31 | 911 → 1,753 | 0.68 | ~0.16 | 1e-4 |
   | 3 | 10-31 → 11-01 | 1,753 → 2,624 | 0.71 | ~0.14 | 1e-4 |
   | 4 | 11-01 | 2,624 → 3,477 | 0.69 | ~0.13 | 5.4e-5 (decaying) |
+  | 5 | 11-01 | 3,477 → 3,783 (3.9 h) | 0.71 | ~0.115 | 0 |
 
-- Throughput varies by ~7% between Kaggle machines, so a session covers 840–910 steps instead of the planned ~910. Session 5 needs ~305 steps (~4.5 h) and should stop with `planned images reached`.
+- Throughput varies by ~7% between Kaggle machines, so a session covers 840–910 steps instead of the planned ~910. Session 5 stopped with `planned images reached` after 121,044 conversations (695k QAs, 66M tokens), about half a pass over the 229k selected train images. It ran one step past the planned 3,782, at lr 0 (harmless).
 - In-training val (2,000 val_small questions; in-distribution, not comparable to the bench numbers):
 
   | Step | Binary | MCQ | Mean |
@@ -325,18 +326,45 @@ Plan, verified facts and deviations: `docs/phase2_vqa_plan.md`.
   | 1753 | 83.98 | 84.61 | 84.30 |
   | 2000 | 85.33 | 84.31 | 84.82 |
   | 2624 | 84.73 | 85.29 | 85.01 |
-  | **3000** | 84.13 | **86.56** | **85.35** (`best/`) |
+  | 3000 | 84.13 | 86.56 | 85.35 |
   | 3477 | 83.68 | 86.41 | 85.05 |
+  | **3783** | **84.88** | **87.91** | **86.40** (final = `best/`) |
 
   - Train accuracy tracks val, so there is no sign of overfitting.
   - MCQ keeps improving (area 68 → 75–78, season 72 → 96, climate zone 92 → 96). MCQ adjacency (~75) is the weakest category.
-  - Binary OA has fallen at each val since step 2000 (85.33 → 83.68), mostly presence at step 3,477. It's within noise for 167 questions per category, but watch it at step 3,782 and on the bench.
+  - The decay gave the expected final gain: +1.35 mean OA from step 3,477 to 3,783, and loss fell from ~0.133 to ~0.116.
+  - The binary dip (85.33 → 83.68 over steps 2000–3477) recovered to 84.88 at the end, so it was mostly noise. MCQ relative position rose to 85.5 and adjacency to 77.8; MCQ area (77.8) and count (80.8) are now the weakest categories.
 - Kaggle gotcha: the notebook viewer shows the output of the last *successful* version. Pick the newest version in the version list before downloading, or you get an older session's logs.
 
+### M8: Fine-tuned bench eval on 2×T4 (2026-11-02)
+- `MODE=eval`, runs c,d,e + 200 captions per run, on the full bench split (12,477 VQA questions). The adapter is `ckpt/best` = step 3,783 (val mean 86.40). Wall time ~5.2 h: VQA took about as long as in M6, plus ~1 h (57–65 min) of unbatched greedy captions per run.
+- `reports/bench_results.md` holds the full a–e table; also `bench_{a..e}.json` and `reliability_{a..e}.svg`. The per-question records (`*.records.jsonl.gz`, ~0.5 MB each) stay on the Hub (`reports/`).
+
+  | Model | Binary OA | MCQ OA | BLEU-4 | ECE (bin / MCQ) |
+  |---|---|---|---|---|
+  | (a) zero-shot, RGB | 59.33 | 37.35 | - | 0.12 / 0.12 |
+  | RS-InternVL fine-tuned (paper) | 73.29 | 51.49 | 34.04 | - |
+  | **(c) LoRA, RGB + NIR-SWIR + SAR** | **77.23** | **78.97** | 0.42 | 0.06 / 0.06 |
+  | (d) LoRA, RGB only | 76.92 | 78.63 | 0.40 | 0.06 / 0.07 |
+  | (e) LoRA, SAR only | 67.00 | 61.57 | 0.14 | 0.11 / 0.10 |
+
+- Fine-tuning gave +17.9 binary and +41.6 MCQ over zero-shot.
+- **Yes-bias gone:** the model now answers "yes" 46.9% of the time (gold 48.0%). Accuracy on "no" questions went from 39% to 79%.
+- **Calibration halved:** ECE 0.12 → 0.06, without any explicit calibration.
+- **Extra composites add nothing measurable:** c − d is +0.31 / +0.34, and McNemar χ² is 2.5 / 2.9, so p ≈ 0.1. The adapter works almost entirely from RGB, and training used modality dropout.
+- **SAR alone carries real signal:** it beats zero-shot RGB by +7.7 / +24.2, and area (80) and count (78) are close to RGB. Country (58.7), season (65.3) and binary presence (58.0) need optical colour.
+- Per category (c):
+  - Strongest: MCQ country 94.9, season 97.0, climate zone 96.7. These are tile- and date-level cues and the easiest to learn.
+  - MCQ excluding those three: about 72.
+  - Weakest: MCQ count 60.2, MCQ adjacency 66.4, binary adjacency 72.6.
+- Bench is 7–9 points below val (84.88 / 87.91). That's expected: the bench is manually verified and asks many questions per image. M1 verified that no image is shared between splits, and test/bench images are never selected for training.
+- Captions copy the dataset's caption template almost word for word (~79 words against ~83 in the reference). The errors are in the facts: area values and sometimes the season. That template matching is why n-gram scores are high. Our BLEU-4 (0.42 on a 0–1 scale) uses a simple lower-case tokenizer and only 200 captions, so it is **not** comparable to the paper's 34.04 (PTB tokenizer, 0–100 scale).
+- **Caveat before claiming "beats RS-InternVL":** our VQA is score-based. The model picks among the offered candidates by logits, so it can never give an invalid answer. The paper most likely generated free text. Zero-shot under our protocol matches the paper's zero-shot models (MCQ 37.35 vs 37.55), so the protocol isn't obviously inflating scores. Still, a +27.5 MCQ claim needs a generative check on a bench subset first.
+
 ## Next (Phase 2.1)
-1. M7 session 5 (~4.5 h, same settings): expect `resumed from step 3477`, then `stopping: planned images reached` with a final val at step 3,782.
-2. M8 eval: `MODE="eval"`, `EVAL_RUNS="c,d,e"`, `CAPTIONS=200` (loads `ckpt/best`). Save outputs under `reports/`, not `results/`, which holds the Phase 1 baselines.
-3. Phase 3: register the adapter as a `benvqa_lora` tool, with confidence calibrated on val.
+1. Generative sanity eval: ~1,000 bench questions, free generation, answers parsed and exact-matched. Compare with the score-based accuracy on the same questions before quoting the comparison with the paper.
+2. Phase 3: register the adapter as a `benvqa_lora` tool, with confidence calibrated on val.
+3. Speed up `generate_captions`: batch generation and a lower `--max-new-tokens`, since captions are ~80 words.
 4. Optionally try `BACKEND=unsloth` in a second smoke run.
 
 ## Definition of done: status

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 380" width="420" height="380" role="img" aria-label="(d) Qwen3.5-4B + our LoRA, RGB only">
+<style>svg{--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--s1:#2a78d6;--s2:#eb6834;font-family:system-ui,sans-serif}@media (prefers-color-scheme: dark){svg{--surface:#1a1a19;--ink:#ffffff;--ink2:#c3c2b7;--grid:#2c2c2a;--s1:#3987e5;--s2:#d95926}}text{fill:var(--ink2);font-size:11px}.t{fill:var(--ink);font-size:13px;font-weight:600}</style>
+<rect width="420" height="380" fill="var(--surface)"/>
+<text class="t" x="52" y="20">(d) Qwen3.5-4B + our LoRA, RGB only</text>
+<line x1="52" x2="396" y1="334" y2="334" stroke="var(--grid)" stroke-width="1"/>
+<text x="44" y="338" text-anchor="end">0.00</text>
+<text x="52" y="350" text-anchor="middle">0.00</text>
+<line x1="52" x2="396" y1="266.0" y2="266.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="44" y="270.0" text-anchor="end">0.25</text>
+<text x="138.0" y="350" text-anchor="middle">0.25</text>
+<line x1="52" x2="396" y1="198.0" y2="198.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="44" y="202.0" text-anchor="end">0.50</text>
+<text x="224.0" y="350" text-anchor="middle">0.50</text>
+<line x1="52" x2="396" y1="130.0" y2="130.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="44" y="134.0" text-anchor="end">0.75</text>
+<text x="310.0" y="350" text-anchor="middle">0.75</text>
+<line x1="52" x2="396" y1="62.0" y2="62.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="44" y="66.0" text-anchor="end">1.00</text>
+<text x="396.0" y="350" text-anchor="middle">1.00</text>
+<line x1="52" y1="334" x2="396" y2="62" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="72.64" y="328.56" transform="rotate(-45 72.64 328.56)">perfect calibration</text>
+<text x="224.0" y="372" text-anchor="middle">confidence (softmax over offered answers)</text>
+<text x="14" y="198.0" text-anchor="middle" transform="rotate(-90 14 198.0)">accuracy</text>
+<line x1="52" x2="66" y1="38" y2="38" stroke="var(--s1)" stroke-width="2"/>
+<circle cx="59" cy="38" r="3" fill="var(--s1)"/>
+<text x="72" y="42">Binary (ECE 0.063)</text>
+<line x1="189.60000000000002" x2="203.60000000000002" y1="38" y2="38" stroke="var(--s2)" stroke-width="2"/>
+<circle cx="196.60000000000002" cy="38" r="3" fill="var(--s2)"/>
+<text x="209.60000000000002" y="42">MCQ (ECE 0.066)</text>
+<path d="M232.0,196.1 L249.2,183.0 L266.3,172.8 L283.8,170.4 L302.0,163.4 L318.8,146.0 L336.3,139.4 L353.3,121.9 L370.7,108.4 L391.9,77.4" fill="none" stroke="var(--s1)" stroke-width="2"/>
+<circle cx="232.0" cy="196.1" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.52, accuracy 0.51, n=424</title></circle>
+<circle cx="249.2" cy="183.0" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.57, accuracy 0.56, n=416</title></circle>
+<circle cx="266.3" cy="172.8" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.62, accuracy 0.59, n=481</title></circle>
+<circle cx="283.8" cy="170.4" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.67, accuracy 0.60, n=487</title></circle>
+<circle cx="302.0" cy="163.4" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.73, accuracy 0.63, n=429</title></circle>
+<circle cx="318.8" cy="146.0" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.78, accuracy 0.69, n=395</title></circle>
+<circle cx="336.3" cy="139.4" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.83, accuracy 0.72, n=506</title></circle>
+<circle cx="353.3" cy="121.9" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.88, accuracy 0.78, n=549</title></circle>
+<circle cx="370.7" cy="108.4" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.93, accuracy 0.83, n=745</title></circle>
+<circle cx="391.9" cy="77.4" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>Binary: confidence 0.99, accuracy 0.94, n=2495</title></circle>
+<path d="M156.9,279.6 L177.4,248.1 L203.8,238.4 L228.6,206.0 L253.7,202.3 L279.4,194.8 L306.0,164.2 L332.3,150.7 L358.2,130.1 L392.4,71.1" fill="none" stroke="var(--s2)" stroke-width="2"/>
+<circle cx="156.9" cy="279.6" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.30, accuracy 0.20, n=10</title></circle>
+<circle cx="177.4" cy="248.1" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.36, accuracy 0.32, n=57</title></circle>
+<circle cx="203.8" cy="238.4" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.44, accuracy 0.35, n=148</title></circle>
+<circle cx="228.6" cy="206.0" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.51, accuracy 0.47, n=323</title></circle>
+<circle cx="253.7" cy="202.3" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.59, accuracy 0.48, n=349</title></circle>
+<circle cx="279.4" cy="194.8" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.66, accuracy 0.51, n=387</title></circle>
+<circle cx="306.0" cy="164.2" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.74, accuracy 0.62, n=370</title></circle>
+<circle cx="332.3" cy="150.7" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.81, accuracy 0.67, n=420</title></circle>
+<circle cx="358.2" cy="130.1" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.89, accuracy 0.75, n=507</title></circle>
+<circle cx="392.4" cy="71.1" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>MCQ: confidence 0.99, accuracy 0.97, n=2979</title></circle>
+</svg>

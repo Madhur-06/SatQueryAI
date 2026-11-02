@@ -14,7 +14,8 @@ htmlcov/
 # Runtime data (uploads, outputs, downloaded benchmarks, weights)
 /data/
 /datasets/
-/kaggle_output/
+# Kaggle stdout logs over the 1 MB pre-commit limit (structured train_log.jsonl is committed)
+/kaggle_output/session [1-4]/train_stdout.log
 *.safetensors
 *.ckpt
 
